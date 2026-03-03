@@ -1,29 +1,15 @@
-cmake_minimum_required(VERSION 3.15)
-project(http-server CXX)
+cmake_minimum_required(VERSION 3.11)
 
-# Указываем путь к заголовочным файлам Boost
-set(Boost_INCLUDE_DIR "C:/boost/boost_1_90_0/boost_1_90_0")
-set(Boost_NO_SYSTEM_PATHS ON)
-set(Boost_DEBUG ON)
+project(hello)
 
-# Ищем Boost (без компонента system, так как он header-only)
-find_package(Boost REQUIRED)
+set(CMAKE_CXX_STANDARD 17)
 
-# Добавляем исполняемый файл
-add_executable(hello_async main.cpp)
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+conan_basic_setup()
 
-# Добавляем include директории
-target_include_directories(hello_async PRIVATE ${Boost_INCLUDE_DIRS})
+add_executable(hello
+    main.cpp
+    http_server.cpp
+)
 
-# Если нужны другие библиотеки (например, thread), добавляем их
-# target_link_libraries(hello_async PRIVATE Boost::thread)
-
-# Устанавливаем стандарт C++17
-target_compile_features(hello_async PRIVATE cxx_std_17)
-
-# Добавляем флаги компиляции
-if(MSVC)
-    target_compile_options(hello_async PRIVATE /W4)
-else()
-    target_compile_options(hello_async PRIVATE -Wall -Wextra)
-endif()
+target_link_libraries(hello ${CONAN_LIBS})
