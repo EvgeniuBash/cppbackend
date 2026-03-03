@@ -1,6 +1,5 @@
 #pragma once
 #include "sdk.h"
-// boost.beast будет использовать std::string_view вместо boost::string_view
 #define BOOST_BEAST_USE_STD_STRING_VIEW
 
 #include <boost/asio/ip/tcp.hpp>
@@ -27,7 +26,6 @@ public:
                       beast::bind_front_handler(&SessionBase::Read, shared_from_this()));
     }
 
-    // Делаем Write публичным, чтобы к нему могли обращаться все
     template <typename Body, typename Fields>
     void Write(http::response<Body, Fields>&& response) {
         auto safe_response = std::make_shared<http::response<Body, Fields>>(std::move(response));
@@ -106,7 +104,6 @@ private:
     void HandleRequest(HttpRequest&& request) override {
         request_handler_(std::move(request), 
             [self = shared_from_this()](auto&& response) {
-                // Write теперь публичный, поэтому доступен
                 self->Write(std::move(response));
             });
     }
