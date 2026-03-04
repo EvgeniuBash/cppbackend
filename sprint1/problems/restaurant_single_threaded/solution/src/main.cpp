@@ -87,6 +87,8 @@ private:
 
 using OrderHandler = std::function<void(sys::error_code ec, int id, Hamburger* hamburger)>;
 
+class Order; 
+
 class Order : public std::enable_shared_from_this<Order> {
 public:
     Order(net::io_context& io, int id, bool with_onion, OrderHandler handler)
