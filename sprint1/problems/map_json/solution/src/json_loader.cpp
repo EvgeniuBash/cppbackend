@@ -1,13 +1,13 @@
 #include <fstream>
 #include <sstream>
 #include <boost/json.hpp>
-#include <boost/json/src.hpp>
 
 #include "json_loader.h"
 
 namespace json_loader {
 
 namespace json = boost::json;
+
 model::Game LoadGame(const std::filesystem::path& json_path) {
     model::Game game;
 
@@ -41,7 +41,6 @@ model::Game LoadGame(const std::filesystem::path& json_path) {
 
             if (road_obj.contains("x1")) {
                 int x1 = road_obj.at("x1").as_int64();
-
                 map.AddRoad(model::Road(
                     model::Road::HORIZONTAL,
                     {x0, y0},
@@ -49,7 +48,6 @@ model::Game LoadGame(const std::filesystem::path& json_path) {
                 ));
             } else {
                 int y1 = road_obj.at("y1").as_int64();
-
                 map.AddRoad(model::Road(
                     model::Road::VERTICAL,
                     {x0, y0},
@@ -81,7 +79,8 @@ model::Game LoadGame(const std::filesystem::path& json_path) {
         for (const auto& office_val : offices) {
             json::object office_obj = office_val.as_object();
 
-            std::string office_id = office_obj.at("id").as_string().c_str();
+            std::string office_id =
+                office_obj.at("id").as_string().c_str();
 
             int x = office_obj.at("x").as_int64();
             int y = office_obj.at("y").as_int64();
@@ -101,5 +100,6 @@ model::Game LoadGame(const std::filesystem::path& json_path) {
     }
 
     return game;
+}
 
 }  // namespace json_loader
