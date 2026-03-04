@@ -6,14 +6,12 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <memory>
-#include <atomic>
 
 #include "hotdog.h"
 #include "result.h"
 
 namespace net = boost::asio;
 
-// Функция-обработчик операции приготовления хот-дога
 using HotDogHandler = std::function<void(Result<HotDog> hot_dog)>;
 
 class HotDogOrder : public std::enable_shared_from_this<HotDogOrder> {
@@ -71,7 +69,7 @@ private:
 
         try {
             HotDog hotdog(
-                next_id_++,
+                sausage_->GetId(),
                 sausage_,
                 bread_);
 
@@ -94,18 +92,14 @@ private:
     net::steady_timer bread_timer_;
 
     bool completed_ = false;
-
-    static inline std::atomic<int> next_id_{0};
 };
 
-// Класс "Кафетерий". Готовит хот-доги
 class Cafeteria {
 public:
     explicit Cafeteria(net::io_context& io)
         : io_{io} {
     }
 
-    // Может вызываться из любого потока
     void OrderHotDog(HotDogHandler handler) {
         net::post(io_, [this, handler = std::move(handler)]() mutable {
             std::make_shared<HotDogOrder>(
