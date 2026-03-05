@@ -34,7 +34,7 @@ int main(int argc, const char* argv[]) {
                         std::forward<decltype(send)>(send));
             });
 
-        std::cout << "Server has started..." << std::endl;
+        std::cout << "Server has started" << std::endl;
 
         ioc.run();
 
