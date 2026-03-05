@@ -1,45 +1,33 @@
-#include "sdk.h"
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/address.hpp>
-#include <iostream>
-#include <thread>
-
-#include "json_loader.h"
-#include "request_handler.h"
 #include "http_server.h"
 
+#include <boost/asio.hpp>
+#include <iostream>
+
 namespace net = boost::asio;
+using tcp = net::ip::tcp;
 
-int main(int argc, const char* argv[]) {
-    if (argc != 2) {
-        std::cerr << "Usage: game_server <game-config-json>\n";
-        return 1;
-    }
-
+int main() {
     try {
-        model::Game game = json_loader::LoadGame(argv[1]);
+        net::io_context ioc{1};
 
-        net::io_context ioc(1);
+        tcp::endpoint endpoint{tcp::v4(), 8080};
 
-        http_handler::RequestHandler handler{game};
+        auto handler = [](auto&& req, auto&& send) {
+            http::response<http::string_body> res;
+            res.version(req.version());
+            res.result(http::status::ok);
+            res.set(http::field::content_type, "text/plain");
+            res.body() = "Hello";
+            res.prepare_payload();
 
-        net::ip::address address = net::ip::make_address("0.0.0.0");
-        const unsigned short port = 8080;
+            send(std::move(res));
+        };
 
-        http_server::ServeHttp(
-            ioc,
-            {address, port},
-            [&handler](auto&& req, auto&& send) {
-                handler(std::forward<decltype(req)>(req),
-                        std::forward<decltype(send)>(send));
-            });
+        std::cout << "Server started" << std::endl;
 
-        std::cout << "Server has started" << std::endl;
-
-        ioc.run();
-
-    } catch (const std::exception& e) {
+        http_server::ServeHttp(ioc, endpoint, handler);
+    }
+    catch (std::exception const& e) {
         std::cerr << e.what() << std::endl;
-        return 1;
     }
 }
