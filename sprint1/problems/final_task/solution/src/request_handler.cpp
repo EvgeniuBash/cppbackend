@@ -79,8 +79,8 @@ http::response<http::string_body> MakeErrorResponse(
 
     json::object err;
 
-    err["code"] = code;
-    err["message"] = message;
+    err["code"] = std::string(code);
+    err["message"] = std::string(message);
 
     return MakeJsonResponse(status, err, version);
 }
