@@ -77,12 +77,18 @@ http::response<http::string_body> MakeErrorResponse(
     std::string_view message,
     unsigned version) {
 
-    json::object err;
+    json::object obj;
+    obj["code"] = code;
+    obj["message"] = message;
 
-    err["code"] = std::string(code);
-    err["message"] = std::string(message);
+    http::response<http::string_body> res{status, version};
 
-    return MakeJsonResponse(status, err, version);
+    res.set(http::field::content_type, "application/json");
+    res.body() = json::serialize(obj);
+
+    res.prepare_payload(); 
+
+    return res;
 }
 
 http::response<http::string_body>

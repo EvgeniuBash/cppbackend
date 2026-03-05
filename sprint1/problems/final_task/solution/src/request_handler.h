@@ -40,7 +40,7 @@ public:
             return send(GetMaps(req.version()));
         }
 
-        if (target.starts_with(api::MAP)) {
+        if (target.starts_with(api::MAP) && target.size() > api::MAP.size()) {
             return send(GetMap(target, req.version()));
         }
 
