@@ -45,14 +45,10 @@ void SessionBase::OnWrite(bool close, beast::error_code ec, std::size_t) {
 void SessionBase::Close() {
     beast::error_code ec;
     stream_.socket().shutdown(tcp::socket::shutdown_send, ec);
-
-    if (ec) {
-        std::cerr << "shutdown: " << ec.message() << std::endl;
-    }
 }
 
 void SessionBase::ReportError(beast::error_code ec, std::string_view what) {
     std::cerr << what << ": " << ec.message() << std::endl;
 }
 
-} // namespace http_server
+}
