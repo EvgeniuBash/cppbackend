@@ -64,9 +64,12 @@ http::response<http::string_body> MakeJsonResponse(
     unsigned version) {
 
     http::response<http::string_body> res{status, version};
+
     res.set(http::field::content_type, "application/json");
     res.body() = json::serialize(body);
-    res.prepare_payload();
+
+    res.content_length(res.body().size());
+    res.keep_alive(false);
 
     return res;
 }
