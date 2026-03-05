@@ -27,22 +27,20 @@ public:
 
     template <typename Response>
     void Write(Response&& response) {
-        auto self = shared_from_this();
+    auto self = shared_from_this();
 
-        auto resp = std::make_shared<std::decay_t<Response>>(
-            std::forward<Response>(response));
+    auto resp = std::make_shared<std::decay_t<Response>>(std::forward<Response>(response));
 
-        http::async_write(socket_, *resp,
-            [self, resp](beast::error_code ec, std::size_t) {
-                if (ec) return;
-
-                self->Read();
-            });
+    http::async_write(socket_, *resp,
+        [self, resp](beast::error_code ec, std::size_t) {
+            self->socket_.shutdown(tcp::socket::shutdown_send, ec);
+        });
     }
 
 protected:
     virtual void HandleRequest(HttpRequest&& request) = 0;
 
+private:
     void Read() {
         auto self = shared_from_this();
 
@@ -54,7 +52,6 @@ protected:
             });
     }
 
-private:
     tcp::socket socket_;
     beast::flat_buffer buffer_;
     HttpRequest request_;
@@ -80,25 +77,37 @@ private:
 };
 
 template <typename RequestHandler>
-void ServeHttp(net::io_context& ioc, const tcp::endpoint& endpoint, RequestHandler&& handler) {
-    tcp::acceptor acceptor{ioc};
+void ServeHttp(net::io_context& ioc,
+               const tcp::endpoint& endpoint,
+               RequestHandler&& handler) {
+
+    auto acceptor = std::make_shared<tcp::acceptor>(ioc);
 
     beast::error_code ec;
 
-    acceptor.open(endpoint.protocol(), ec);
-    acceptor.set_option(net::socket_base::reuse_address(true), ec);
-    acceptor.bind(endpoint, ec);
-    acceptor.listen(net::socket_base::max_listen_connections, ec);
+    acceptor->open(endpoint.protocol(), ec);
+    acceptor->set_option(net::socket_base::reuse_address(true), ec);
+    acceptor->bind(endpoint, ec);
+    acceptor->listen(net::socket_base::max_listen_connections, ec);
 
-    for (;;) {
-        tcp::socket socket{ioc};
-        acceptor.accept(socket);
+    std::function<void()> do_accept;
 
-        std::make_shared<HttpSession<RequestHandler>>(
-            std::move(socket),
-            handler
-        )->Run();
-    }
+    do_accept = [acceptor, &ioc, &handler, &do_accept]() {
+        acceptor->async_accept(
+            [&ioc, &handler, acceptor, &do_accept](beast::error_code ec, tcp::socket socket) {
+
+                if (!ec) {
+                    std::make_shared<HttpSession<RequestHandler>>(
+                        std::move(socket),
+                        handler
+                    )->Run();
+                }
+
+                do_accept();
+            });
+    };
+
+    do_accept();
 }
 
 } // namespace http_server
