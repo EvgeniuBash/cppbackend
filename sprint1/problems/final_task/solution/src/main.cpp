@@ -6,28 +6,21 @@
 namespace net = boost::asio;
 using tcp = net::ip::tcp;
 
-int main() {
+int main(int argc, const char* argv[]) {
     try {
         net::io_context ioc{1};
 
         tcp::endpoint endpoint{tcp::v4(), 8080};
 
-        auto handler = [](auto&& req, auto&& send) {
-            http::response<http::string_body> res;
-            res.version(req.version());
-            res.result(http::status::ok);
-            res.set(http::field::content_type, "text/plain");
-            res.body() = "Hello";
-            res.prepare_payload();
-
-            send(std::move(res));
-        };
+        auto handler = ...;
 
         std::cout << "Server started" << std::endl;
 
         http_server::ServeHttp(ioc, endpoint, handler);
+
+        ioc.run();   // 🔴 ОБЯЗАТЕЛЬНО
     }
-    catch (std::exception const& e) {
+    catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }
 }
