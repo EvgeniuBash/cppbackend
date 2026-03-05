@@ -47,6 +47,7 @@ public:
         if (target.starts_with(api::API)) {
             return send(MakeBadRequest(req.version()));
         }
+        return send(MakeBadRequest(req.version()));
     }
 
 private:

@@ -148,7 +148,9 @@ RequestHandler::MakeMethodNotAllowed(unsigned version) {
         version
     };
 
+    res.set(http::field::allow, "GET");
     res.prepare_payload();
+
     return res;
 }
 
