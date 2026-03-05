@@ -78,8 +78,8 @@ http::response<http::string_body> MakeErrorResponse(
     unsigned version) {
 
     json::object obj;
-    obj["code"] = code;
-    obj["message"] = message;
+    obj["code"] = std::string(code);
+    obj["message"] = std::string(message);
 
     http::response<http::string_body> res{status, version};
 
