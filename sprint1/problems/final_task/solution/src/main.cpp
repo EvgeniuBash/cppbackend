@@ -6,6 +6,7 @@
 
 #include "json_loader.h"
 #include "request_handler.h"
+#include "http_server.h"
 
 namespace net = boost::asio;
 

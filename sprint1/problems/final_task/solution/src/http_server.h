@@ -22,7 +22,7 @@ public:
     SessionBase& operator=(const SessionBase&) = delete;
 
     void Run();
-
+    
     template <typename Body, typename Fields> void Write(http::response<Body, Fields>&& response) { 
     auto safe_response = std::make_shared<http::response<Body, Fields>>(std::move(response));
     auto self = shared_from_this();
@@ -50,5 +50,8 @@ private:
     beast::flat_buffer buffer_;
     HttpRequest request_;
 };
+
+template <typename RequestHandler>
+void ServeHttp(net::io_context& ioc, tcp::endpoint endpoint, RequestHandler&& handler);
 
 }  // namespace http_server
