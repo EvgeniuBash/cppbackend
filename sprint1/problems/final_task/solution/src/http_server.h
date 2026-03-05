@@ -25,18 +25,20 @@ public:
         Read();
     }
 
-protected:
-    virtual void HandleRequest(HttpRequest&& request) = 0;
-
     template <typename Response>
     void Write(Response&& response) {
-        auto self = shared_from_this();
+    auto self = shared_from_this();
 
-        http::async_write(socket_, response,
-            [self](beast::error_code ec, std::size_t) {
-                self->socket_.shutdown(tcp::socket::shutdown_send, ec);
-            });
+    auto resp = std::make_shared<std::decay_t<Response>>(std::forward<Response>(response));
+
+    http::async_write(socket_, *resp,
+        [self, resp](beast::error_code ec, std::size_t) {
+            self->socket_.shutdown(tcp::socket::shutdown_send, ec);
+        });
     }
+
+protected:
+    virtual void HandleRequest(HttpRequest&& request) = 0;
 
 private:
     void Read() {
