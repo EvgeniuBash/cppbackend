@@ -143,13 +143,17 @@ RequestHandler::MakeBadRequest(unsigned version) {
 http::response<http::string_body>
 RequestHandler::MakeMethodNotAllowed(unsigned version) {
 
-    http::response<http::string_body> res{
+    json::object obj;
+    obj["code"] = "invalidMethod";
+    obj["message"] = "Only GET method is expected";
+
+    auto res = MakeJsonResponse(
         http::status::method_not_allowed,
+        obj,
         version
-    };
+    );
 
     res.set(http::field::allow, "GET");
-    res.prepare_payload();
 
     return res;
 }
