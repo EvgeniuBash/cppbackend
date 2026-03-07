@@ -54,6 +54,9 @@ private:
 };
 
 template <typename RequestHandler>
+class Session;
+
+template <typename RequestHandler>
 void ServeHttp(net::io_context& ioc, const tcp::endpoint& endpoint, RequestHandler&& handler);
 
 }  // namespace http_server

@@ -75,7 +75,7 @@ private:
 };
 
 template <typename RequestHandler>
-class Session : public SessionBase, public std::enable_shared_from_this<Session<RequestHandler>> {
+class Session : public SessionBase {
 public:
     Session(tcp::acceptor&& acceptor, RequestHandler&& handler)
         : SessionBase(tcp::socket(acceptor.get_executor()))
@@ -86,7 +86,8 @@ public:
     void Run() {
         acceptor_.async_accept(
             net::make_strand(acceptor_.get_executor()),
-            [self = this->shared_from_this()](beast::error_code ec, tcp::socket socket) {
+            [self = std::static_pointer_cast<Session<RequestHandler>>(this->shared_from_this())]
+            (beast::error_code ec, tcp::socket socket) {
                 self->OnAccept(ec, std::move(socket));
             }
         );
@@ -111,8 +112,9 @@ private:
 template <typename RequestHandler>
 void ServeHttp(net::io_context& ioc, const tcp::endpoint& endpoint, RequestHandler&& handler) {
     tcp::acceptor acceptor(ioc, endpoint);
+
     std::make_shared<Session<RequestHandler>>(
-        std::move(acceptor), 
+        std::move(acceptor),
         std::forward<RequestHandler>(handler)
     )->Run();
 }
