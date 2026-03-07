@@ -6,6 +6,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <memory>
+#include <atomic>
 
 #include "hotdog.h"
 #include "result.h"
@@ -59,25 +60,24 @@ private:
     }
 
     void TryComplete() {
-        if (completed_)
-            return;
+    if (!sausage_->IsCooked() || !bread_->IsCooked())
+        return;
 
-        if (!sausage_->IsCooked() || !bread_->IsCooked())
-            return;
+    bool expected = false;
+    if (!completed_.compare_exchange_strong(expected, true))
+        return;
 
-        completed_ = true;
+    try {
+        HotDog hotdog(
+            sausage_->GetId(),
+            sausage_,
+            bread_);
 
-        try {
-            HotDog hotdog(
-                sausage_->GetId(),
-                sausage_,
-                bread_);
-
-            handler_(Result<HotDog>(std::move(hotdog)));
-        } catch (...) {
-            handler_(Result<HotDog>::FromCurrentException());
-        }
+        handler_(Result<HotDog>(std::move(hotdog)));
+    } catch (...) {
+        handler_(Result<HotDog>::FromCurrentException());
     }
+}
 
 private:
     net::io_context& io_;
@@ -91,7 +91,7 @@ private:
     net::steady_timer sausage_timer_;
     net::steady_timer bread_timer_;
 
-    bool completed_ = false;
+    std::atomic_bool completed_{false};
 };
 
 class Cafeteria {
