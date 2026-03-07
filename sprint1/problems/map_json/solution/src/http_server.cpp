@@ -50,6 +50,10 @@ private:
         Run();
     }
 
+    void HandleRequest(HttpRequest&& request) override {
+        std::cerr << "Error: Session::HandleRequest should never be called" << std::endl;
+    }
+
    		
 
     tcp::acceptor acceptor_;
