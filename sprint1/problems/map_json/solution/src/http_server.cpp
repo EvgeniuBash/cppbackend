@@ -80,7 +80,7 @@ public:
     Session(tcp::acceptor&& acceptor, RequestHandler&& handler)
         : SessionBase(tcp::socket(acceptor.get_executor()))
         , acceptor_(std::move(acceptor))
-        , handler_(std::move(handler)) {
+        , handler_(std::make_shared<RequestHandler>(std::move(handler))) {
     }
 
     void Run() {
@@ -96,7 +96,7 @@ public:
 private:
     void OnAccept(beast::error_code ec, tcp::socket socket) {
         if (!ec) {
-            std::make_shared<HandlerSession<RequestHandler>>(std::move(socket), handler_)->Run();
+            std::make_shared<HandlerSession<RequestHandler>>(std::move(socket), *handler_)->Run();
         }
         Run();
     }
@@ -109,15 +109,6 @@ private:
     RequestHandler handler_;
 };
 
-template <typename RequestHandler>
-void ServeHttp(net::io_context& ioc, const tcp::endpoint& endpoint, RequestHandler&& handler) {
-    tcp::acceptor acceptor(ioc, endpoint);
-
-    std::make_shared<Session<RequestHandler>>(
-        std::move(acceptor),
-        std::forward<RequestHandler>(handler)
-    )->Run();
-}
 
 template void ServeHttp<http_handler::RequestHandler>(
     net::io_context&, const tcp::endpoint&, http_handler::RequestHandler&&);

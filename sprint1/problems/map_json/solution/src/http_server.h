@@ -57,7 +57,14 @@ template <typename RequestHandler>
 class Session;
 
 template <typename RequestHandler>
-void ServeHttp(net::io_context& ioc, const tcp::endpoint& endpoint, RequestHandler&& handler);
+void ServeHttp(net::io_context& ioc, const tcp::endpoint& endpoint, RequestHandler&& handler) {
+    tcp::acceptor acceptor(ioc, endpoint);
+
+    std::make_shared<Session<RequestHandler>>(
+        std::move(acceptor),
+        std::forward<RequestHandler>(handler)
+    )->Run();
+}
 
 }  // namespace http_server
 
