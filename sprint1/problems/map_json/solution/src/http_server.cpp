@@ -1,4 +1,5 @@
 #include "http_server.h"
+#include "request_handler.h"
 
 #include <boost/asio/dispatch.hpp>
 #include <iostream>
