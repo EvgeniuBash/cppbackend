@@ -16,6 +16,9 @@ using tcp = net::ip::tcp;
 namespace beast = boost::beast;
 namespace http = beast::http;
 
+template <typename RequestHandler>
+void ServeHttp(net::io_context& ioc, const tcp::endpoint& endpoint, RequestHandler&& handler);
+
 class SessionBase : public std::enable_shared_from_this<SessionBase> {
 public:
     SessionBase(const SessionBase&) = delete;
