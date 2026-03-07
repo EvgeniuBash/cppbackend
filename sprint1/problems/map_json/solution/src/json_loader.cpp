@@ -20,12 +20,15 @@ json::object ParseJson(const std::filesystem::path& path) {
     try {
         return json::parse(buffer.str()).as_object();
     } catch (const std::exception& e) {
-        throw std::runtime_error(
-            std::string("JSON parse error: ") + e.what());
+        throw std::runtime_error(std::string("JSON parse error: ") + e.what());
     }
 }
 
 void LoadRoads(model::Map& map, const json::object& map_obj) {
+    if (!map_obj.contains("roads")) {
+        return;
+    }
+
     for (const auto& road_val : map_obj.at("roads").as_array()) {
         const auto& road_obj = road_val.as_object();
 
@@ -40,7 +43,7 @@ void LoadRoads(model::Map& map, const json::object& map_obj) {
                 {x0, y0},
                 x1
             ));
-        } else {
+        } else if (road_obj.contains("y1")) {
             int y1 = road_obj.at("y1").as_int64();
 
             map.AddRoad(model::Road(
@@ -53,6 +56,10 @@ void LoadRoads(model::Map& map, const json::object& map_obj) {
 }
 
 void LoadBuildings(model::Map& map, const json::object& map_obj) {
+    if (!map_obj.contains("buildings")) {
+        return;
+    }
+
     for (const auto& building_val : map_obj.at("buildings").as_array()) {
         const auto& obj = building_val.as_object();
 
@@ -68,6 +75,10 @@ void LoadBuildings(model::Map& map, const json::object& map_obj) {
 }
 
 void LoadOffices(model::Map& map, const json::object& map_obj) {
+    if (!map_obj.contains("offices")) {
+        return;
+    }
+
     for (const auto& office_val : map_obj.at("offices").as_array()) {
         const auto& obj = office_val.as_object();
 
@@ -100,6 +111,10 @@ model::Game LoadGame(const std::filesystem::path& json_path) {
     model::Game game;
 
     json::object root = ParseJson(json_path);
+
+    if (!root.contains("maps")) {
+        throw std::runtime_error("Config must contain maps");
+    }
 
     for (const auto& map_val : root.at("maps").as_array()) {
         game.AddMap(LoadMap(map_val.as_object()));

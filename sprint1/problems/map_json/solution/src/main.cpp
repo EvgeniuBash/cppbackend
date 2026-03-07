@@ -1,18 +1,20 @@
 #include "sdk.h"
+
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/address.hpp>
+
 #include <iostream>
-#include <thread>
 
 #include "json_loader.h"
 #include "request_handler.h"
+#include "http_server.h"
 
 namespace net = boost::asio;
 
 int main(int argc, const char* argv[]) {
     if (argc != 2) {
-        std::cerr << "Usage: game_server <game-config-json>\n";
-        return 1;
+        std::cerr << "Usage: game_server <game-config-json>" << std::endl;
+        return EXIT_FAILURE;
     }
 
     try {
@@ -22,23 +24,25 @@ int main(int argc, const char* argv[]) {
 
         http_handler::RequestHandler handler{game};
 
-        net::ip::address address = net::ip::make_address("0.0.0.0");
+        const auto address = net::ip::make_address("0.0.0.0");
         const unsigned short port = 8080;
 
         http_server::ServeHttp(
             ioc,
             {address, port},
             [&handler](auto&& req, auto&& send) {
-                handler(std::forward<decltype(req)>(req),
-                        std::forward<decltype(send)>(send));
+                handler(
+                    std::forward<decltype(req)>(req),
+                    std::forward<decltype(send)>(send)
+                );
             });
 
-        std::cout << "Server has started..." << std::endl;
+        std::cout << "Server has started on port 8080..." << std::endl;
 
         ioc.run();
 
     } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
-        return 1;
+        std::cerr << "Fatal error: " << e.what() << std::endl;
+        return EXIT_FAILURE;
     }
 }

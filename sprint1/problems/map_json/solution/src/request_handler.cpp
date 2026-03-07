@@ -64,6 +64,7 @@ http::response<http::string_body> MakeJsonResponse(
     unsigned version) {
 
     http::response<http::string_body> res{status, version};
+
     res.set(http::field::content_type, "application/json");
     res.body() = json::serialize(body);
     res.prepare_payload();
@@ -79,8 +80,9 @@ http::response<http::string_body> MakeErrorResponse(
 
     json::object err;
 
-    err["code"] = code;
-    err["message"] = message;
+    // ИСПРАВЛЕНИЕ: преобразуем string_view в string
+    err["code"] = std::string(code);
+    err["message"] = std::string(message);
 
     return MakeJsonResponse(status, err, version);
 }
@@ -148,7 +150,10 @@ RequestHandler::MakeMethodNotAllowed(unsigned version) {
         version
     };
 
+    res.set(http::field::content_type, "text/plain");
+    res.body() = "Method Not Allowed";
     res.prepare_payload();
+
     return res;
 }
 
