@@ -31,7 +31,7 @@ public:
     Session(tcp::acceptor&& acceptor, RequestHandler&& handler)
         : SessionBase(tcp::socket(acceptor.get_executor()))
         , acceptor_(std::move(acceptor))
-        , handler_(std::forward<RequestHandler>(handler)) {
+        , handler_(std::move(handler)) { 
     }
 
     void Run() {
@@ -54,17 +54,18 @@ private:
         std::cerr << "Error: Session::HandleRequest should never be called" << std::endl;
     }
 
-   		
-
     tcp::acceptor acceptor_;
-    RequestHandler handler_;
+    RequestHandler handler_; 
 };
 
 template <typename RequestHandler>
 void ServeHttp(net::io_context& ioc, const tcp::endpoint& endpoint, RequestHandler&& handler) {
     tcp::acceptor acceptor(ioc, endpoint);
 
-    std::make_shared<Session<RequestHandler>>(std::move(acceptor), std::forward<RequestHandler>(handler))->Run();
+    std::make_shared<Session<RequestHandler>>(
+        std::move(acceptor), 
+        std::forward<RequestHandler>(handler)
+    )->Run();
 }
 
 void SessionBase::Run() {

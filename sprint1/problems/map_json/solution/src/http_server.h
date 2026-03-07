@@ -1,4 +1,6 @@
-#pragma once
+#ifndef HTTP_SERVER_H
+#define HTTP_SERVER_H
+
 #include "sdk.h"
 #define BOOST_BEAST_USE_STD_STRING_VIEW
 
@@ -16,9 +18,6 @@ using tcp = net::ip::tcp;
 namespace beast = boost::beast;
 namespace http = beast::http;
 
-template <typename RequestHandler>
-void ServeHttp(net::io_context& ioc, const tcp::endpoint& endpoint, RequestHandler&& handler);
-
 class SessionBase : public std::enable_shared_from_this<SessionBase> {
 public:
     SessionBase(const SessionBase&) = delete;
@@ -27,10 +26,10 @@ public:
     void Run();
 
     template <typename Body, typename Fields> void Write(http::response<Body, Fields>&& response) { 
-    auto safe_response = std::make_shared<http::response<Body, Fields>>(std::move(response));
-    auto self = shared_from_this();
-    http::async_write(stream_, *safe_response, [safe_response, self](beast::error_code ec, std::size_t bytes_written) { 
-    self->OnWrite(safe_response->need_eof(), ec, bytes_written);
+        auto safe_response = std::make_shared<http::response<Body, Fields>>(std::move(response));
+        auto self = shared_from_this();
+        http::async_write(stream_, *safe_response, [safe_response, self](beast::error_code ec, std::size_t bytes_written) { 
+            self->OnWrite(safe_response->need_eof(), ec, bytes_written);
         }); 
     }
 
@@ -54,4 +53,9 @@ private:
     HttpRequest request_;
 };
 
+template <typename RequestHandler>
+void ServeHttp(net::io_context& ioc, const tcp::endpoint& endpoint, RequestHandler&& handler);
+
 }  // namespace http_server
+
+#endif // HTTP_SERVER_H
