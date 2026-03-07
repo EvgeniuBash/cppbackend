@@ -37,9 +37,10 @@ public:
     void Run() {
         acceptor_.async_accept(
             net::make_strand(acceptor_.get_executor()),
-            beast::bind_front_handler(&Session::OnAccept, this->shared_from_this())
-        );
+            [self = this->shared_from_this()](beast::error_code ec, tcp::socket socket) {
+        self->OnAccept(ec, std::move(socket));
     }
+);
 
 private:
     void OnAccept(beast::error_code ec, tcp::socket socket) {
