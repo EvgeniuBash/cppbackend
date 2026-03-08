@@ -1,6 +1,4 @@
 #include "http_server.h"
-#include <boost/asio/dispatch.hpp>
-#include <string_view>
 
 namespace http_server {
 
@@ -11,25 +9,26 @@ SessionBase::~SessionBase() = default;
 
 void SessionBase::Run() {
     net::dispatch(stream_.get_executor(),
-        beast::bind_front_handler(&SessionBase::Read, shared_from_this()));
+                  beast::bind_front_handler(&SessionBase::Read,
+                                            shared_from_this()));
 }
 
 void SessionBase::Read() {
     request_ = {};
+
     stream_.expires_after(std::chrono::seconds(30));
 
     http::async_read(stream_, buffer_, request_,
-        beast::bind_front_handler(&SessionBase::OnRead, shared_from_this()));
+                     beast::bind_front_handler(&SessionBase::OnRead,
+                                               shared_from_this()));
 }
 
 void SessionBase::OnRead(beast::error_code ec, std::size_t) {
-    if (ec == http::error::end_of_stream) {
+    if (ec == http::error::end_of_stream)
         return Close();
-    }
 
-    if (ec) {
+    if (ec)
         return ReportError(ec, "read");
-    }
 
     HandleRequest(std::move(request_));
 }
@@ -39,13 +38,11 @@ void SessionBase::Close() {
 }
 
 void SessionBase::OnWrite(bool close, beast::error_code ec, std::size_t) {
-    if (ec) {
+    if (ec)
         return ReportError(ec, "write");
-    }
 
-    if (close) {
+    if (close)
         return Close();
-    }
 
     Read();
 }

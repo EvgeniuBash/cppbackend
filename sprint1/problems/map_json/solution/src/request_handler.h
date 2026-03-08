@@ -1,7 +1,6 @@
 #pragma once
+
 #include <boost/json.hpp>
-#include <string>
-#include <string_view>
 #include "http_server.h"
 #include "model.h"
 
@@ -12,180 +11,190 @@ namespace http = beast::http;
 namespace json = boost::json;
 
 namespace {
-    const std::string MAPS_ENDPOINT = "/api/v1/maps";
-    const std::string MAP_ENDPOINT_PREFIX = "/api/v1/maps/";
-    const std::string API_PREFIX = "/api/";
 
-    constexpr char ID[] = "id";
-    constexpr char NAME[] = "name";
-    constexpr char X[] = "x";
-    constexpr char Y[] = "y";
-    constexpr char X0[] = "x0";
-    constexpr char Y0[] = "y0";
-    constexpr char X1[] = "x1";
-    constexpr char Y1[] = "y1";
-    constexpr char W[] = "w";
-    constexpr char H[] = "h";
-    constexpr char OFFSET_X[] = "offsetX";
-    constexpr char OFFSET_Y[] = "offsetY";
-    constexpr char CODE[] = "code";
-    constexpr char MESSAGE[] = "message";
-    constexpr char ROADS[] = "roads";
-    constexpr char BUILDINGS[] = "buildings";
-    constexpr char OFFICES[] = "offices";
+const std::string MAPS_ENDPOINT = "/api/v1/maps";
+const std::string MAP_ENDPOINT_PREFIX = "/api/v1/maps/";
+const std::string API_PREFIX = "/api/";
 
-    json::object SerializeRoad(const model::Road& road) {
-        json::object obj;
-        obj[X0] = road.GetStart().x;
-        obj[Y0] = road.GetStart().y;
+namespace json_keys {
 
-        if (road.IsHorizontal()) {
-            obj[X1] = road.GetEnd().x;
-        } else {
-            obj[Y1] = road.GetEnd().y;
-        }
+const char* ID = "id";
+const char* NAME = "name";
 
-        return obj;
-    }
+const char* X0 = "x0";
+const char* Y0 = "y0";
+const char* X1 = "x1";
+const char* Y1 = "y1";
 
-    json::object SerializeBuilding(const model::Building& building) {
-        json::object obj;
-        obj[X] = building.GetBounds().position.x;
-        obj[Y] = building.GetBounds().position.y;
-        obj[W] = building.GetBounds().size.width;
-        obj[H] = building.GetBounds().size.height;
-        return obj;
-    }
+const char* X = "x";
+const char* Y = "y";
+const char* W = "w";
+const char* H = "h";
 
-    json::object SerializeOffice(const model::Office& office) {
-        json::object obj;
-        obj[ID] = *office.GetId();
-        obj[X] = office.GetPosition().x;
-        obj[Y] = office.GetPosition().y;
-        obj[OFFSET_X] = office.GetOffset().dx;
-        obj[OFFSET_Y] = office.GetOffset().dy;
-        return obj;
-    }
+const char* OFFSET_X = "offsetX";
+const char* OFFSET_Y = "offsetY";
 
-    json::object SerializeMapPreview(const model::Map& map) {
-        json::object obj;
-        obj[ID] = *map.GetId();
-        obj[NAME] = map.GetName();
-        return obj;
-    }
+}
 
-    json::object SerializeMapFull(const model::Map& map) {
-        json::object result = SerializeMapPreview(map);
+json::object SerializeRoad(const model::Road& road) {
+    json::object obj;
 
-        json::array roads_array;
-        for (const auto& road : map.GetRoads()) {
-            roads_array.push_back(SerializeRoad(road));
-        }
-        result[ROADS] = roads_array;
+    obj[json_keys::X0] = road.GetStart().x;
+    obj[json_keys::Y0] = road.GetStart().y;
 
-        json::array buildings_array;
-        for (const auto& building : map.GetBuildings()) {
-            buildings_array.push_back(SerializeBuilding(building));
-        }
-        result[BUILDINGS] = buildings_array;
+    if (road.IsHorizontal())
+        obj[json_keys::X1] = road.GetEnd().x;
+    else
+        obj[json_keys::Y1] = road.GetEnd().y;
 
-        json::array offices_array;
-        for (const auto& office : map.GetOffices()) {
-            offices_array.push_back(SerializeOffice(office));
-        }
-        result[OFFICES] = offices_array;
+    return obj;
+}
 
-        return result;
-    }
+json::object SerializeBuilding(const model::Building& building) {
+    json::object obj;
 
-    json::object CreateErrorResponse(const std::string& code, const std::string& message) {
-        json::object error;
-        error[CODE] = code;
-        error[MESSAGE] = message;
-        return error;
-    }
+    obj[json_keys::X] = building.GetBounds().position.x;
+    obj[json_keys::Y] = building.GetBounds().position.y;
+    obj[json_keys::W] = building.GetBounds().size.width;
+    obj[json_keys::H] = building.GetBounds().size.height;
 
-    template<typename Send>
-    void SendJsonResponse(Send&& send, http::status status, 
-                          const std::string& body, unsigned version) {
-        http::response<http::string_body> response{status, version};
-        response.set(http::field::content_type, "application/json");
-        response.body() = body;
-        response.prepare_payload();
-        send(std::move(response));
-    }
+    return obj;
+}
+
+json::object SerializeOffice(const model::Office& office) {
+    json::object obj;
+
+    obj[json_keys::ID] = *office.GetId();
+    obj[json_keys::X] = office.GetPosition().x;
+    obj[json_keys::Y] = office.GetPosition().y;
+    obj[json_keys::OFFSET_X] = office.GetOffset().dx;
+    obj[json_keys::OFFSET_Y] = office.GetOffset().dy;
+
+    return obj;
+}
+
 }
 
 class RequestHandler {
 public:
-    explicit RequestHandler(model::Game& game) : game_{game} {}
+    explicit RequestHandler(model::Game& game)
+        : game_{game} {}
 
     RequestHandler(const RequestHandler&) = delete;
     RequestHandler& operator=(const RequestHandler&) = delete;
 
     template <typename Body, typename Allocator, typename Send>
-    void operator()(http::request<Body, http::basic_fields<Allocator>>&& req, Send&& send) {
+    void operator()(http::request<Body, http::basic_fields<Allocator>>&& req,
+                    Send&& send) {
+
         std::string target = std::string(req.target());
 
         if (req.method() != http::verb::get) {
-            return SendJsonResponse(std::forward<Send>(send), 
-                http::status::method_not_allowed, 
-                json::serialize(CreateErrorResponse("methodNotAllowed", "Method not allowed")),
-                req.version());
+            http::response<http::string_body> response{
+                http::status::method_not_allowed, req.version()};
+            response.prepare_payload();
+            send(std::move(response));
+            return;
         }
 
         if (target == MAPS_ENDPOINT) {
-            HandleGetMaps(std::forward<Send>(send), req.version());
+            json::array maps_array;
+
+            for (const auto& map : game_.GetMaps()) {
+                json::object map_obj;
+
+                map_obj[json_keys::ID] = *map.GetId();
+                map_obj[json_keys::NAME] = map.GetName();
+
+                maps_array.push_back(map_obj);
+            }
+
+            http::response<http::string_body> response{
+                http::status::ok, req.version()};
+
+            response.set(http::field::content_type, "application/json");
+            response.body() = json::serialize(maps_array);
+            response.prepare_payload();
+
+            send(std::move(response));
             return;
         }
 
         if (target.starts_with(MAP_ENDPOINT_PREFIX)) {
+
             std::string map_id = target.substr(MAP_ENDPOINT_PREFIX.size());
-            HandleGetMap(map_id, std::forward<Send>(send), req.version());
+
+            const model::Map* map =
+                game_.FindMap(model::Map::Id{map_id});
+
+            if (!map) {
+                json::object error;
+
+                error["code"] = "mapNotFound";
+                error["message"] = "Map not found";
+
+                http::response<http::string_body> response{
+                    http::status::not_found, req.version()};
+
+                response.set(http::field::content_type, "application/json");
+                response.body() = json::serialize(error);
+                response.prepare_payload();
+
+                send(std::move(response));
+                return;
+            }
+
+            json::array roads_array;
+            for (const auto& road : map->GetRoads())
+                roads_array.push_back(SerializeRoad(road));
+
+            json::array buildings_array;
+            for (const auto& building : map->GetBuildings())
+                buildings_array.push_back(SerializeBuilding(building));
+
+            json::array offices_array;
+            for (const auto& office : map->GetOffices())
+                offices_array.push_back(SerializeOffice(office));
+
+            json::object result;
+
+            result[json_keys::ID] = *map->GetId();
+            result[json_keys::NAME] = map->GetName();
+            result["roads"] = roads_array;
+            result["buildings"] = buildings_array;
+            result["offices"] = offices_array;
+
+            http::response<http::string_body> response{
+                http::status::ok, req.version()};
+
+            response.set(http::field::content_type, "application/json");
+            response.body() = json::serialize(result);
+            response.prepare_payload();
+
+            send(std::move(response));
             return;
         }
 
         if (target.starts_with(API_PREFIX)) {
-            SendJsonResponse(std::forward<Send>(send), 
-                http::status::bad_request,
-                json::serialize(CreateErrorResponse("badRequest", "Bad request")),
-                req.version());
-            return;
+
+            json::object error;
+
+            error["code"] = "badRequest";
+            error["message"] = "Bad request";
+
+            http::response<http::string_body> response{
+                http::status::bad_request, req.version()};
+
+            response.set(http::field::content_type, "application/json");
+            response.body() = json::serialize(error);
+            response.prepare_payload();
+
+            send(std::move(response));
         }
     }
 
 private:
-    template<typename Send>
-    void HandleGetMaps(Send&& send, unsigned version) {
-        json::array maps_array;
-        for (const auto& map : game_.GetMaps()) {
-            maps_array.push_back(SerializeMapPreview(map));
-        }
-        SendJsonResponse(std::forward<Send>(send), 
-            http::status::ok, 
-            json::serialize(maps_array),
-            version);
-    }
-
-    template<typename Send>
-    void HandleGetMap(const std::string& map_id, Send&& send, unsigned version) {
-        const model::Map* map = game_.FindMap(model::Map::Id{map_id});
-        
-        if (!map) {
-            SendJsonResponse(std::forward<Send>(send), 
-                http::status::not_found,
-                json::serialize(CreateErrorResponse("mapNotFound", "Map not found")),
-                version);
-            return;
-        }
-
-        SendJsonResponse(std::forward<Send>(send), 
-            http::status::ok,
-            json::serialize(SerializeMapFull(*map)),
-            version);
-    }
-
     model::Game& game_;
 };
 
-} // namespace http_handler
+}
