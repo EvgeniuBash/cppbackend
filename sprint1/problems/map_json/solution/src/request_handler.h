@@ -1,5 +1,6 @@
 #pragma once
 #include <boost/json.hpp>
+#include <string_view>
 #include "http_server.h"
 #include "model.h"
 
