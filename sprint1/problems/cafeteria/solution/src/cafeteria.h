@@ -106,7 +106,7 @@ public:
 
     void OrderHotDog(HotDogHandler handler) {
         int order_id = next_order_id_++;
-        net::post(io_, [this, handler = std::move(handler)]() mutable {
+        net::post(io_, [this, handler = std::move(handler), order_id]() mutable {
             std::make_shared<HotDogOrder>(
                 io_,
                 store_,
