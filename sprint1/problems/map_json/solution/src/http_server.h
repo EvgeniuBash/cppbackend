@@ -1,4 +1,5 @@
 #pragma once
+
 #include "sdk.h"
 
 #define BOOST_BEAST_USE_STD_STRING_VIEW
@@ -31,6 +32,21 @@ protected:
 
     explicit SessionBase(tcp::socket&& socket);
 
+    template <typename Body, typename Fields>
+    void Write(http::response<Body, Fields>&& response) {
+        auto safe_response =
+            std::make_shared<http::response<Body, Fields>>(std::move(response));
+
+        auto self = shared_from_this();
+
+        http::async_write(
+            stream_,
+            *safe_response,
+            [safe_response, self](beast::error_code ec, std::size_t bytes_written) {
+                self->OnWrite(safe_response->need_eof(), ec, bytes_written);
+            });
+    }
+
 private:
     void Read();
     void OnRead(beast::error_code ec, std::size_t bytes_read);
@@ -55,25 +71,11 @@ public:
 
 private:
     void HandleRequest(HttpRequest&& request) override {
-        request_handler_(std::move(request),
-                         [self = shared_from_this()](auto&& response) {
-                             self->Write(std::move(response));
-                         });
-    }
-
-    template <typename Body, typename Fields>
-    void Write(http::response<Body, Fields>&& response) {
-        auto safe_response =
-            std::make_shared<http::response<Body, Fields>>(std::move(response));
-
-        auto self = shared_from_this();
-
-        http::async_write(stream_, *safe_response,
-                          [safe_response, self](beast::error_code ec,
-                                                std::size_t bytes_written) {
-                              self->OnWrite(safe_response->need_eof(), ec,
-                                            bytes_written);
-                          });
+        request_handler_(
+            std::move(request),
+            [self = this->shared_from_this()](auto&& response) {
+                self->Write(std::move(response));
+            });
     }
 
     RequestHandler request_handler_;
@@ -83,56 +85,14 @@ template <typename RequestHandler>
 class Listener : public std::enable_shared_from_this<Listener<RequestHandler>> {
 public:
     template <typename Handler>
-    Listener(net::io_context& ioc, const tcp::endpoint& endpoint,
-             Handler&& request_handler)
-        : ioc_(ioc)
-        , acceptor_(net::make_strand(ioc))
-        , request_handler_(std::forward<Handler>(request_handler)) {
+    Listener(net::io_context& ioc, const tcp::endpoint& endpoint, Handler&& request_handler);
 
-        beast::error_code ec;
-
-        acceptor_.open(endpoint.protocol(), ec);
-        if (ec)
-            throw std::runtime_error("Failed to open acceptor");
-
-        acceptor_.set_option(net::socket_base::reuse_address(true), ec);
-        if (ec)
-            throw std::runtime_error("Failed to set option");
-
-        acceptor_.bind(endpoint, ec);
-        if (ec)
-            throw std::runtime_error("Failed to bind");
-
-        acceptor_.listen(net::socket_base::max_listen_connections, ec);
-        if (ec)
-            throw std::runtime_error("Failed to listen");
-    }
-
-    void Run() { DoAccept(); }
+    void Run();
 
 private:
-    void DoAccept() {
-        acceptor_.async_accept(
-            net::make_strand(ioc_),
-            beast::bind_front_handler(&Listener::OnAccept,
-                                      this->shared_from_this()));
-    }
-
-    void OnAccept(beast::error_code ec, tcp::socket socket) {
-        if (ec) {
-            std::cerr << "Accept error: " << ec.message() << std::endl;
-            return;
-        }
-
-        AsyncRunSession(std::move(socket));
-        DoAccept();
-    }
-
-    void AsyncRunSession(tcp::socket&& socket) {
-        std::make_shared<Session<RequestHandler>>(std::move(socket),
-                                                  request_handler_)
-            ->Run();
-    }
+    void DoAccept();
+    void OnAccept(beast::error_code ec, tcp::socket socket);
+    void AsyncRunSession(tcp::socket&& socket);
 
     net::io_context& ioc_;
     tcp::acceptor acceptor_;
@@ -140,13 +100,14 @@ private:
 };
 
 template <typename RequestHandler>
-void ServeHttp(net::io_context& ioc, const tcp::endpoint& endpoint,
-               RequestHandler&& handler) {
+void ServeHttp(net::io_context& ioc, const tcp::endpoint& endpoint, RequestHandler&& handler) {
     using MyListener = Listener<std::decay_t<RequestHandler>>;
 
-    std::make_shared<MyListener>(ioc, endpoint,
-                                 std::forward<RequestHandler>(handler))
-        ->Run();
+    std::make_shared<MyListener>(
+        ioc,
+        endpoint,
+        std::forward<RequestHandler>(handler)
+    )->Run();
 }
 
-}  // namespace http_server
+} 
