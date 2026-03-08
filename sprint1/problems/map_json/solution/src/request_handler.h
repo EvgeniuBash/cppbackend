@@ -1,5 +1,6 @@
 #pragma once
 #include <boost/json.hpp>
+#include <string>
 #include <string_view>
 #include "http_server.h"
 #include "model.h"
@@ -106,7 +107,7 @@ namespace {
 
     template<typename Send>
     void SendJsonResponse(Send&& send, http::status status, 
-                          const json::serialize& body, unsigned version) {
+                          const std::string& body, unsigned version) {
         http::response<http::string_body> response{status, version};
         response.set(http::field::content_type, "application/json");
         response.body() = body;
