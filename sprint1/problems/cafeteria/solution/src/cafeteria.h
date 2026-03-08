@@ -20,10 +20,12 @@ public:
     HotDogOrder(net::io_context& io,
                 Store& store,
                 std::shared_ptr<GasCooker> cooker,
+                int order_id,
                 HotDogHandler handler)
         : io_(io)
         , store_(store)
         , cooker_(std::move(cooker))
+        , order_id_(order_id)
         , handler_(std::move(handler))
         , sausage_timer_(io)
         , bread_timer_(io) {
@@ -69,7 +71,7 @@ private:
 
     try {
         HotDog hotdog(
-            sausage_->GetId(),
+            order_id_,
             sausage_,
             bread_);
 
@@ -82,6 +84,7 @@ private:
 private:
     net::io_context& io_;
     Store& store_;
+    int order_id_;
     std::shared_ptr<GasCooker> cooker_;
     HotDogHandler handler_;
 
@@ -97,15 +100,18 @@ private:
 class Cafeteria {
 public:
     explicit Cafeteria(net::io_context& io)
-        : io_{io} {
+        : io_{io}
+        , next_order_id_{0} {
     }
 
     void OrderHotDog(HotDogHandler handler) {
+        int order_id = next_order_id_++;
         net::post(io_, [this, handler = std::move(handler)]() mutable {
             std::make_shared<HotDogOrder>(
                 io_,
                 store_,
                 gas_cooker_,
+                order_id,
                 std::move(handler)
             )->Start();
         });
@@ -115,4 +121,5 @@ private:
     net::io_context& io_;
     Store store_;
     std::shared_ptr<GasCooker> gas_cooker_ = std::make_shared<GasCooker>(io_);
+    std::atomic<int> next_order_id_;
 };
