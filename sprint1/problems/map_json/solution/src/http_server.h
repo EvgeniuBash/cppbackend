@@ -23,13 +23,12 @@ public:
     SessionBase(const SessionBase&) = delete;
     SessionBase& operator=(const SessionBase&) = delete;
 
-    void Run();
-    virtual ~SessionBase();
-
-protected:
     using HttpRequest = http::request<http::string_body>;
 
     explicit SessionBase(tcp::socket&& socket);
+    virtual ~SessionBase();
+
+    void Run();
 
     template <typename Body, typename Fields>
     void Write(http::response<Body, Fields>&& response) {
@@ -46,14 +45,15 @@ protected:
             });
     }
 
+protected:
+    virtual void HandleRequest(HttpRequest&& request) = 0;
+
 private:
     void Read();
     void OnRead(beast::error_code ec, std::size_t bytes_read);
     void Close();
     void OnWrite(bool close, beast::error_code ec, std::size_t bytes_written);
     void ReportError(beast::error_code ec, std::string_view what);
-
-    virtual void HandleRequest(HttpRequest&& request) = 0;
 
     beast::tcp_stream stream_;
     beast::flat_buffer buffer_;
