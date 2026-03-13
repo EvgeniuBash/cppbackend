@@ -20,7 +20,7 @@ int main(int argc, const char* argv[]) {
 
         net::io_context ioc(1);
 
-        http_handler::RequestHandler handler{game};
+        http_handler::RequestHandler handler{game, "static"};
 
         net::ip::address address = net::ip::make_address("0.0.0.0");
         const unsigned short port = 8080;

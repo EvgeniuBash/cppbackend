@@ -337,11 +337,11 @@ public:
 
          send(std::move(response));
          return;    
+         }
     }
-
 private:
     model::Game& game_;
     std::filesystem::path static_root_;
 };
 
-}
+} // namespace http_handler
