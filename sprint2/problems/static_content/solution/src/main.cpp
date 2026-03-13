@@ -10,7 +10,7 @@
 namespace net = boost::asio;
 
 int main(int argc, const char* argv[]) {
-    if (argc != 2) {
+    if (argc != 3) {
         std::cerr << "Usage: game_server <game-config-json>\n";
         return 1;
     }
@@ -20,7 +20,7 @@ int main(int argc, const char* argv[]) {
 
         net::io_context ioc(1);
 
-        http_handler::RequestHandler handler{game, "static"};
+        http_handler::RequestHandler handler{game, argv[2]};
 
         net::ip::address address = net::ip::make_address("0.0.0.0");
         const unsigned short port = 8080;
