@@ -16,7 +16,6 @@ using namespace std::literals;
 
 class Logger {
     auto GetTime() const {
-        std::lock_guard<std::mutex> lock(m_);
         if (manual_ts_) {
             return *manual_ts_;
         }
@@ -32,19 +31,17 @@ class Logger {
 
     // Для имени файла возьмите дату с форматом "%Y_%m_%d"
     std::string GetFileTimeStamp() const {
-        auto now = std::chrono::system_clock::now();
-        auto time_t = std::chrono::system_clock::to_time_t(now);
-        std::tm tm = *std::localtime(&time_t);
-        
+        const auto now = GetTime();
+        const auto t_c = std::chrono::system_clock::to_time_t(now);
+
+        std::tm tm = *std::localtime(&t_c);
+
         std::ostringstream oss;
         oss << std::put_time(&tm, "%Y_%m_%d");
         return oss.str();
     }
 
-    Logger() {
-        std::string filename = "/var/log/sample_log_" + GetFileTimeStamp() + ".log";
-        log_file_.open(filename, std::ios::app);
-    }
+    Logger() = default;
     Logger(const Logger&) = delete;
 
 public:
@@ -63,7 +60,7 @@ public:
         }
         
         log_file_ << GetTimeStamp() << ": "sv ;
-        ((log_file_ << args << " "sv), ...); 
+        ((log_file_ << args), ...); 
         log_file_ << std::endl;
     }
 
@@ -77,6 +74,7 @@ public:
 
 private:
     std::optional<std::chrono::system_clock::time_point> manual_ts_;
-    mutable std::mutex m_;
+    std::mutex m_;
     std::ofstream log_file_;
+    std::string current_file_date_;
 };
