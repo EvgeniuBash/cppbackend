@@ -9,7 +9,6 @@
 #include <optional>
 #include <mutex>
 #include <thread>
-#include <format>
 
 using namespace std::literals;
 
@@ -34,7 +33,12 @@ class Logger {
     // Для имени файла возьмите дату с форматом "%Y_%m_%d"
     std::string GetFileTimeStamp() const {
         auto now = std::chrono::system_clock::now();
-        return std::format("{:%Y_%m_%d}", now);
+        auto time_t = std::chrono::system_clock::to_time_t(now);
+        std::tm tm = *std::localtime(&time_t);
+        
+        std::ostringstream oss;
+        oss << std::put_time(&tm, "%Y_%m_%d");
+        return oss.str();
     }
 
     Logger() {
