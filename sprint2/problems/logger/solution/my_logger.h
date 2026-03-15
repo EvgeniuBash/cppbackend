@@ -29,6 +29,21 @@ class Logger {
         return std::put_time(std::localtime(&t_c), "%F %T");
     }
 
+    void OpenFileIfNeeded() {
+    std::string date = GetFileTimeStamp();
+
+    if (date != current_file_date_) {
+        if (log_file_.is_open()) {
+            log_file_.close();
+        }
+
+        std::string filename = "/var/log/sample_log_" + date + ".log";
+        log_file_.open(filename, std::ios::app);
+
+        current_file_date_ = date;
+        }
+    }
+
     // Для имени файла возьмите дату с форматом "%Y_%m_%d"
     std::string GetFileTimeStamp() const {
         const auto now = GetTime();
@@ -54,6 +69,8 @@ public:
     template<class... Ts>
     void Log(const Ts&... args) {
         std::lock_guard lock(m_);
+
+        OpenFileIfNeeded();
 
         if (!log_file_.is_open()) {
             return; 
