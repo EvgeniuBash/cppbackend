@@ -1,9 +1,5 @@
 [requires]
 boost/1.78.0
 
-[options]
-boost/*:header_only=True
-
 [generators]
-CMakeDeps
-CMakeToolchain
+cmake
