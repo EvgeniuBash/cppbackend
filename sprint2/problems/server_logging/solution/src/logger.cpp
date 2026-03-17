@@ -1,5 +1,24 @@
 #include "logger.h"
 
+#include <boost/log/trivial.hpp>
+#include <boost/log/utility/setup/console.hpp>
+#include <boost/log/core.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/attributes/current_thread_id.hpp>
+
+#include <boost/json.hpp>
+
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+#include <chrono>
+#include <ctime>
+
+namespace logging = boost::log;
+namespace expr = boost::log::expressions;
+namespace attrs = boost::log::attributes;
+namespace json = boost::json;
+
 void init_logging() {
     logging::add_console_log(
         std::clog,
