@@ -5,6 +5,7 @@
 #include <boost/log/core.hpp>
 #include <boost/log/expressions.hpp>
 #include <boost/log/attributes/current_thread_id.hpp>
+#include <boost/log/utility/manipulators/add_value.hpp>
 
 #include <boost/json.hpp>
 
@@ -64,7 +65,7 @@ void log_server_exited(int code, const std::string& exception) {
 }
 
 void log_request(const std::string& ip, const std::string& uri, const std::string& method) {
-    json::object data{{"ip", ip}, {"URI", uri}, {"method", method}};
+    json::object data{{"ip", ip}, {"uri", uri}, {"method", method}};
     BOOST_LOG_TRIVIAL(info) << logging::add_value(additional_data, data)
                             << "request received";
 }
@@ -73,10 +74,18 @@ void log_response(const std::string& ip, int response_time, int code, const std:
     json::object data{
         {"ip", ip},
         {"response_time", response_time},
-        {"code", code},
-        {"content_type", content_type.empty() ? json::value(nullptr) : content_type}};
-    BOOST_LOG_TRIVIAL(info) << logging::add_value(additional_data, data)
-                            << "response sent";
+        {"code", code}
+    };
+
+    if (content_type.empty()) {
+        data["content_type"] = nullptr;
+    } else {
+        data["content_type"] = content_type;
+    }
+
+    BOOST_LOG_TRIVIAL(info)
+        << logging::add_value(additional_data, data)
+        << "response sent";
 }
 
 void log_error(int code, const std::string& text, const std::string& where) {
