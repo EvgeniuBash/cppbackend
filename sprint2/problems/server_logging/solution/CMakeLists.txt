@@ -2,28 +2,25 @@ cmake_minimum_required(VERSION 3.11)
 project(game_server CXX)
 set(CMAKE_CXX_STANDARD 20)
 
+# Conan
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup()
+conan_basic_setup(TARGETS)
 
 # Опции Boost
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 
-# Найти Boost через FindBoost
-find_package(Boost 1.78.0 REQUIRED
-    COMPONENTS log log_setup thread system filesystem date_time regex chrono atomic
+find_package(Boost 1.78.0 REQUIRED COMPONENTS
+    log log_setup thread system filesystem date_time regex chrono atomic
 )
 
 if(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
 endif()
 
-# Threads
-set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-# Исходники
 add_executable(game_server
     src/main.cpp
     src/http_server.cpp
@@ -44,5 +41,5 @@ add_executable(game_server
 # Линковка
 target_link_libraries(game_server PRIVATE
     Threads::Threads
-    ${Boost_LIBRARIES}  # Все библиотеки Boost
+    ${Boost_LIBRARIES}      # Обязательно все библиотеки Boost
 )
