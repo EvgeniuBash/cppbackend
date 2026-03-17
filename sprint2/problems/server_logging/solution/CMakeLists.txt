@@ -26,12 +26,12 @@ add_executable(game_server
     src/logger.h
 )
 
-# 🔥 обязательно для динамической линковки Boost.Log
+# 🔥 КЛЮЧЕВОЙ ФИКС
 target_compile_definitions(game_server PRIVATE
     BOOST_LOG_DYN_LINK
+    BOOST_ALL_DYN_LINK
 )
 
-# 💥 ПОЛНАЯ линковка (ключевой фикс)
 target_link_libraries(game_server
     ${CONAN_LIBS}
 
@@ -41,6 +41,8 @@ target_link_libraries(game_server
     boost_system
     boost_filesystem
     boost_regex
+    boost_date_time
+    boost_atomic
 
     Threads::Threads
     dl
