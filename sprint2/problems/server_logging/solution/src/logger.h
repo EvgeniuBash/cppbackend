@@ -1,24 +1,29 @@
 #pragma once
+
 #include <boost/log/trivial.hpp>
 #include <boost/log/attributes/current_thread_id.hpp>
 #include <boost/log/attributes/timer.hpp>
+#include <boost/log/attributes/local_clock.hpp>
 #include <boost/log/utility/setup/console.hpp>
-#include <boost/log/core.hpp>
 #include <boost/log/expressions.hpp>
+#include <boost/log/core.hpp>
+#include <boost/log/sources/logger.hpp>
+#include <boost/log/utility/manipulators/add_value.hpp>
 #include <boost/json.hpp>
-#include <chrono>
+#include <boost/beast/http.hpp>
 #include <string>
+#include <chrono>
 #include <sstream>
 #include <iomanip>
 
 namespace logging = boost::log;
 namespace attrs = boost::log::attributes;
-namespace expr = boost::log::expressions;
 namespace json = boost::json;
 
 BOOST_LOG_ATTRIBUTE_KEYWORD(additional_data, "AdditionalData", json::value)
 
 void init_logging();
+
 void log_server_started(int port, const std::string& address);
 void log_server_exited(int code, const std::string& exception = "");
 void log_request(const std::string& ip, const std::string& uri, const std::string& method);
@@ -33,17 +38,19 @@ public:
     template <typename Req, typename Send>
     auto operator()(Req&& req, Send&& send) {
         try {
-            std::string ip = "127.0.0.1"; // проще пока, реальный IP можно взять из session
-            std::string uri = req.target().to_string();
-            std::string method = req.method_string().to_string();
+            std::string ip = "127.0.0.1";
+            std::string uri = std::string(req.target());
+            std::string method = std::string(req.method_string());
+
             log_request(ip, uri, method);
 
             auto response = handler_(std::forward<Req>(req), std::forward<Send>(send));
 
             int code = response.result_int();
             int response_time = 1; 
-            std::string content_type = response[boost::beast::http::field::content_type].empty() ? "" :
-                                       response[boost::beast::http::field::content_type].to_string();
+            std::string content_type = response[boost::beast::http::field::content_type].empty() ?
+                                       "" : std::string(response[boost::beast::http::field::content_type]);
+
             log_response(ip, response_time, code, content_type);
 
             return response;

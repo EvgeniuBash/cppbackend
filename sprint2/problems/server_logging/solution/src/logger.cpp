@@ -1,13 +1,9 @@
 #include "logger.h"
-#include <boost/log/expressions.hpp>
-#include <boost/log/utility/setup/console.hpp>
-#include <iostream>
-#include <ctime>
 
 namespace logging = boost::log;
 namespace attrs = boost::log::attributes;
-namespace expr = boost::log::expressions;
 namespace json = boost::json;
+namespace expr = boost::log::expressions;
 
 void init_logging() {
     logging::add_console_log(
@@ -15,15 +11,19 @@ void init_logging() {
         logging::keywords::format = [](logging::record_view const& rec, logging::formatting_ostream& strm) {
             json::object obj;
 
-            auto now = std::chrono::system_clock::now();
-            auto micros = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count() % 1000000;
-            std::time_t t = std::chrono::system_clock::to_time_t(now);
-            std::tm tm = *std::gmtime(&t);
-            char buf[32];
-            std::strftime(buf, sizeof(buf), "%FT%T", &tm);
-            std::stringstream ss;
-            ss << buf << "." << std::setw(6) << std::setfill('0') << micros;
-            obj["timestamp"] = ss.str();
+            auto ts = logging::extract<std::chrono::system_clock::time_point>("TimeStamp", rec);
+            if (ts) {
+                auto dur = ts.get().time_since_epoch();
+                auto sec = std::chrono::duration_cast<std::chrono::seconds>(dur);
+                auto micros = std::chrono::duration_cast<std::chrono::microseconds>(dur - sec).count();
+                std::time_t t = std::chrono::system_clock::to_time_t(ts.get());
+                std::tm tm = *std::gmtime(&t);
+                char buf[32];
+                std::strftime(buf, sizeof(buf), "%FT%T", &tm);
+                std::stringstream ss;
+                ss << buf << "." << std::setw(6) << std::setfill('0') << micros;
+                obj["timestamp"] = ss.str();
+            }
 
             obj["message"] = rec[expr::smessage].get();
 
@@ -34,7 +34,7 @@ void init_logging() {
         }
     );
 
-    logging::core::get()->add_global_attribute("ThreadID", attrs::current_thread_id());
+    logging::core::get()->add_global_attribute("TimeStamp", attrs::local_clock());
 }
 
 void log_server_started(int port, const std::string& address) {
