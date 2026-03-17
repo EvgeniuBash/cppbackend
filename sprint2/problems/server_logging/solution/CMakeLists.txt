@@ -31,8 +31,13 @@ target_compile_definitions(game_server PRIVATE
     BOOST_LOG_DYN_LINK
 )
 
-# ❗ ВАЖНО: только Conan + Threads
+# ✅ ВОТ КЛЮЧЕВОЙ ФИКС
 target_link_libraries(game_server
     ${CONAN_LIBS}
+
+    boost_log
+    boost_log_setup
+
     Threads::Threads
+    dl
 )
