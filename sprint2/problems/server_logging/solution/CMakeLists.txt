@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.11)
 project(game_server CXX)
 set(CMAKE_CXX_STANDARD 20)
 
-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup()
+include(${CMAKE_BINARY_DIR}/conanbuildinfo_multi.cmake)
+conan_basic_setup(TARGETS)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -26,20 +26,10 @@ add_executable(game_server
     src/logger.h
 )
 
-target_compile_definitions(game_server PRIVATE
-    BOOST_LOG_DYN_LINK
-)
-
-# Используем переменные от Conan для путей к библиотекам
-target_link_directories(game_server PRIVATE ${CONAN_LIB_DIRS})
-
+# Одна строка решает все проблемы с include и линковкой Boost!
 target_link_libraries(game_server
     PRIVATE
-    ${CONAN_LIBS}
+    CONAN_PKG::boost
     Threads::Threads
     dl
-    
-    # Явно указываем библиотеки Boost.Log
-    Boost::log
-    Boost::log_setup
 )
