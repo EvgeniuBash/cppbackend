@@ -5,6 +5,8 @@
 #include <boost/log/expressions.hpp>
 #include <boost/log/utility/setup/console.hpp>
 #include <boost/log/attributes/current_thread_id.hpp>
+#include <boost/beast/http.hpp>
+#include <boost/beast/core.hpp>
 #include <boost/json.hpp>
 #include <chrono>
 #include <iomanip>
@@ -36,9 +38,9 @@ public:
     template <typename Req, typename Send>
     auto operator()(Req&& req, Send&& send) {
         try {
-            std::string ip = "127.0.0.1"; // можно заменить на реальный ip
-            std::string uri = req.target().to_string();
-            std::string method = req.method_string().to_string();
+            std::string ip = "127.0.0.1"; 
+            std::string uri{req.target().data(), req.target().size()};
+            std::string method{req.method_string().data(), req.method_string().size()};
 
             log_request(ip, uri, method);
 
@@ -46,10 +48,13 @@ public:
 
             std::string content_type = "";
             if (!response[boost::beast::http::field::content_type].empty())
-                content_type = response[boost::beast::http::field::content_type].to_string();
+                content_type = std::string(
+                    response[boost::beast::http::field::content_type].data(),
+                    response[boost::beast::http::field::content_type].size()
+                );
 
             log_response(ip,
-                         response.result_int(),  // можно заменить на измерение времени
+                         0,
                          response.result_int(),
                          content_type);
 
