@@ -11,6 +11,7 @@ boost:without_thread=False
 boost:without_filesystem=False
 boost:without_system=False
 boost:without_date_time=False
+boost:without_atomic=False
 
 [generators]
 cmake
