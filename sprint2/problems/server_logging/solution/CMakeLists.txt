@@ -1,13 +1,12 @@
-cmake_minimum_required(VERSION 3.18)
-project(game_server)
+cmake_minimum_required(VERSION 3.23)
+project(game_server LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include(${CMAKE_TOOLCHAIN_FILE})
 
-find_package(boost REQUIRED COMPONENTS log log_setup thread system filesystem)
+find_package(boost REQUIRED)
 
-file(GLOB SOURCES src/*.cpp src/*.h)
+add_executable(game_server
+    src/main.cpp
+)
 
-add_executable(game_server ${SOURCES})
-
-target_link_libraries(game_server PRIVATE Boost::log Boost::log_setup Boost::thread Boost::system Boost::filesystem)
+target_link_libraries(game_server PRIVATE boost::boost)
