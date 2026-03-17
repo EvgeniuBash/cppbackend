@@ -3,49 +3,32 @@
 #include <boost/log/expressions.hpp>
 #include <boost/log/utility/setup/console.hpp>
 #include <boost/log/attributes/current_thread_id.hpp>
-#include <boost/log/attributes/timer.hpp>
-#include <iostream>
-#include <chrono>
-#include <ctime>
-#include <iomanip>
-#include <sstream>
+#include <boost/log/attributes/scoped_attribute.hpp>
+#include <boost/json.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace logging = boost::log;
 namespace attrs = boost::log::attributes;
-namespace expr = boost::log::expressions;
-namespace keywords = boost::log::keywords;
 namespace json = boost::json;
 
 void init_logging() {
     logging::add_console_log(
-        std::clog,
-        keywords::format = [](logging::record_view const& rec, logging::formatting_ostream& strm) {
+        std::cout,
+        logging::keywords::format = [](auto const& record, auto& stream) {
             json::object obj;
+            obj["timestamp"] = boost::posix_time::to_iso_extended_string(
+                boost::posix_time::microsec_clock::local_time()
+            );
+            obj["message"] = record[logging::trivial::message];
 
-            auto ts = logging::extract<std::chrono::system_clock::time_point>("TimeStamp", rec);
-            if (ts) {
-                auto dur = ts.get().time_since_epoch();
-                auto sec = std::chrono::duration_cast<std::chrono::seconds>(dur);
-                auto micros = std::chrono::duration_cast<std::chrono::microseconds>(dur - sec).count();
-                std::time_t t = std::chrono::system_clock::to_time_t(ts.get());
-                std::tm tm = *std::gmtime(&t);
-                char buf[32];
-                std::strftime(buf, sizeof(buf), "%FT%T", &tm);
-                std::stringstream ss;
-                ss << buf << "." << std::setw(6) << std::setfill('0') << micros;
-                obj["timestamp"] = ss.str();
-            }
-
-            obj["message"] = rec[expr::smessage].get();
-
-            auto attr = rec[additional_data];
+            auto attr = record[additional_data];
             obj["data"] = attr ? attr.get() : json::object{};
 
-            strm << json::serialize(obj);
+            stream << json::serialize(obj);
         }
     );
 
-    logging::core::get()->add_global_attribute("TimeStamp", attrs::local_clock());
+    logging::core::get()->add_global_attribute("ThreadID", attrs::current_thread_id());
 }
 
 void log_server_started(int port, const std::string& address) {
@@ -76,5 +59,5 @@ void log_response(const std::string& ip, int response_time, int code, const std:
 
 void log_error(int code, const std::string& text, const std::string& where) {
     json::object data{{"code", code}, {"text", text}, {"where", where}};
-    BOOST_LOG_TRIVIAL(info) << logging::add_value(additional_data, data) << "error";
+    BOOST_LOG_TRIVIAL(error) << logging::add_value(additional_data, data) << "error";
 }
