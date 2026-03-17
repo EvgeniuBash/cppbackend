@@ -44,6 +44,9 @@ target_link_libraries(game_server
     boost_thread
     boost_system
     boost_filesystem
+    boost_regex
+    boost_date_time
+    boost_atomic
 
     Threads::Threads
     dl
