@@ -7,16 +7,20 @@ RUN apt update && \
 WORKDIR /app
 
 COPY conanfile.txt /app/
+
+RUN conan profile detect
+
 RUN mkdir build && cd build && \
     conan install .. --build=missing
 
 COPY ./src /app/src
 COPY CMakeLists.txt /app/
 
+# Используем toolchain от Conan 2
 RUN cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake .. && \
     cmake --build .
-    
+
 FROM ubuntu:22.04 as run
 
 RUN groupadd -r www && useradd -r -g www www
