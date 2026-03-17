@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
 
-find_package(Boost 1.78.0 REQUIRED)
+find_package(Boost 1.78.0 REQUIRED COMPONENTS log log_setup thread system filesystem)
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
 endif()
