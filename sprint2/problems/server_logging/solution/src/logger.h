@@ -44,21 +44,28 @@ public:
 
             log_request(ip, uri, method);
 
-            auto response = handler_(std::forward<Req>(req), std::forward<Send>(send));
+            auto logging_send = [send, ip](auto&& response) mutable {
+                std::string content_type;
 
-            std::string content_type = "";
-            if (!response[boost::beast::http::field::content_type].empty())
-                content_type = std::string(
-                    response[boost::beast::http::field::content_type].data(),
-                    response[boost::beast::http::field::content_type].size()
+                if (!response[boost::beast::http::field::content_type].empty()) {
+                    content_type = std::string(
+                        response[boost::beast::http::field::content_type].data(),
+                        response[boost::beast::http::field::content_type].size()
+                    );
+                }
+
+                log_response(
+                    ip,
+                    0, 
+                    response.result_int(),
+                    content_type
                 );
 
-            log_response(ip,
-                         0,
-                         response.result_int(),
-                         content_type);
+                send(std::forward<decltype(response)>(response));
+            };
 
-            return response;
+            handler_(std::forward<Req>(req), logging_send);
+
         } catch (const std::exception& e) {
             log_error(1, e.what(), "handler");
             throw;
