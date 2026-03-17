@@ -5,16 +5,25 @@ set(CMAKE_CXX_STANDARD 20)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
 
+# Опции Boost
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+
+# Найти Boost через FindBoost
 find_package(Boost 1.78.0 REQUIRED
     COMPONENTS log log_setup thread system filesystem date_time regex chrono atomic
 )
+
 if(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
 endif()
 
+# Threads
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
+# Исходники
 add_executable(game_server
     src/main.cpp
     src/http_server.cpp
@@ -32,15 +41,8 @@ add_executable(game_server
     src/logger.h
 )
 
+# Линковка
 target_link_libraries(game_server PRIVATE
     Threads::Threads
-    Boost::log
-    Boost::log_setup
-    Boost::thread
-    Boost::filesystem
-    Boost::system
-    Boost::regex
-    Boost::date_time
-    Boost::chrono
-    Boost::atomic
+    ${Boost_LIBRARIES}  # Все библиотеки Boost
 )
