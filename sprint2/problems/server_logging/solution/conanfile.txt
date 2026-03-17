@@ -3,15 +3,8 @@ boost/1.78.0
 
 [options]
 boost:shared=True
-boost:header_only=False
 boost:without_log=False
 boost:without_python=True
-boost:without_chrono=False
-boost:without_thread=False
-boost:without_filesystem=False
-boost:without_system=False
-boost:without_date_time=False
-boost:without_atomic=False
 
 [generators]
 cmake
