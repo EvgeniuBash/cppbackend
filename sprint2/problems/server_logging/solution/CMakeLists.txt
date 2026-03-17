@@ -3,14 +3,12 @@ cmake_minimum_required(VERSION 3.11)
 project(game_server CXX)
 set(CMAKE_CXX_STANDARD 20)
 
-# Подключаем Conan (старый стиль cmake генератора)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup()  # добавляет include/lib директории и ${CONAN_LIBS}
+conan_basic_setup()
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-# Исполняемый файл
 add_executable(game_server
     src/main.cpp
     src/http_server.cpp
@@ -28,10 +26,10 @@ add_executable(game_server
     src/logger.h
 )
 
-# Линкуем библиотеки через ${CONAN_LIBS}
 target_link_libraries(game_server
     PRIVATE
-    ${CONAN_LIBS}     # boost_log, boost_thread, boost_system и все остальные
-    Threads::Threads  # pthread
+    ${CONAN_LIBS}               # включает boost_log, boost_system, boost_thread и др.
+    Threads::Threads
     dl
+    CONAN_PKG::boost_filesystem  # для логов и setup
 )
