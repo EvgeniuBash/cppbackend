@@ -30,12 +30,16 @@ target_compile_definitions(game_server PRIVATE
     BOOST_LOG_DYN_LINK
 )
 
-# ВАЖНО: Явно указываем библиотеки для линковки
+# Используем переменные от Conan для путей к библиотекам
+target_link_directories(game_server PRIVATE ${CONAN_LIB_DIRS})
+
 target_link_libraries(game_server
     PRIVATE
     ${CONAN_LIBS}
     Threads::Threads
     dl
-    ${CMAKE_BINARY_DIR}/lib/libboost_log.so           # Явный путь к .so
-    ${CMAKE_BINARY_DIR}/lib/libboost_log_setup.so     # Явный путь к .so
+    
+    # Явно указываем библиотеки Boost.Log
+    Boost::log
+    Boost::log_setup
 )
