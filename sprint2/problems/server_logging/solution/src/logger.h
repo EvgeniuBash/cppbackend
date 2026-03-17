@@ -1,102 +1,54 @@
 #pragma once
 
 #include <boost/log/trivial.hpp>
-#include <boost/log/expressions.hpp>
-#include <boost/log/core.hpp>
 #include <boost/log/utility/setup/console.hpp>
-#include <boost/log/attributes/scoped_attribute.hpp>
 #include <boost/log/attributes/current_thread_id.hpp>
+#include <boost/log/attributes/local_clock.hpp>
+#include <boost/log/expressions.hpp>
 #include <boost/json.hpp>
-#include <chrono>
-#include <iomanip>
-#include <sstream>
+#include <boost/asio.hpp>
+#include <boost/beast/http.hpp>
 #include <string>
-#include <string_view>
 
 namespace logging = boost::log;
 namespace attrs = boost::log::attributes;
+namespace expr = boost::log::expressions;
 namespace json = boost::json;
 
 BOOST_LOG_ATTRIBUTE_KEYWORD(additional_data, "AdditionalData", json::value)
 
-inline void init_logging() {
-    logging::add_console_log(
-        std::cout,
-        logging::keywords::format = [](auto const& record, auto& stream) {
-            const auto& json_data = record[additional_data];
+void init_logging();
 
-            json::object obj;
-            obj["timestamp"] = boost::posix_time::to_iso_extended_string(
-                boost::posix_time::microsec_clock::local_time()
-            );
-            obj["message"] = record[logging::trivial::message];
+void log_server_started(int port, const std::string& address);
+void log_server_exited(int code, const std::string& exception = "");
 
-            if (json_data) {
-                obj["data"] = json::value_cast<json::value>(json_data.get());
-            } else {
-                obj["data"] = json::object{};
-            }
+void log_request(const std::string& ip, const std::string& uri, const std::string& method);
+void log_response(const std::string& ip, int response_time, int code, const std::string& content_type);
 
-            stream << json::serialize(obj);
-        }
-    );
-    logging::core::get()->add_global_attribute("ThreadID", attrs::current_thread_id());
-}
+void log_error(int code, const std::string& text, const std::string& where);
 
-template <typename Handler>
+template<class Handler>
 class LoggingRequestHandler {
 public:
     explicit LoggingRequestHandler(Handler& handler) : decorated_(handler) {}
 
-    template <typename Req, typename Send>
-    void operator()(Req&& req, Send&& send) {
-        try 
-            json::object req_data;
-            req_data["ip"] = "127.0.0.1"; 
-            req_data["URI"] = std::string(req.target());
-            req_data["method"] = std::string(req.method_string());
+    template<typename Req, typename Send>
+    auto operator()(Req&& req, Send&& send) {
+        std::string ip = "127.0.0.1"; // TODO: при наличии endpoint извлекать реальный IP
+        std::string uri = req.target().to_string();
+        std::string method = req.method_string().to_string();
 
-            BOOST_LOG_TRIVIAL(info)
-                << logging::add_value(additional_data, req_data)
-                << "request received";
+        log_request(ip, uri, method);
 
-            auto start = std::chrono::steady_clock::now();
+        auto response = decorated_(std::forward<Req>(req), std::forward<Send>(send));
 
-            auto logging_send = [&](auto&& response) {
-                auto end = std::chrono::steady_clock::now();
-                auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::string content_type;
+        if (response.find(boost::beast::http::field::content_type) != response.end())
+            content_type = response[boost::beast::http::field::content_type].to_string();
 
-                json::object resp_data;
-                resp_data["response_time"] = static_cast<int>(ms);
-                resp_data["code"] = static_cast<int>(response.result_int());
+        log_response(ip, 0, response.result_int(), content_type);
 
-                if (response.find(boost::beast::http::field::content_type) != response.end()) {
-                    resp_data["content_type"] = response[boost::beast::http::field::content_type].to_string();
-                } else {
-                    resp_data["content_type"] = nullptr;
-                }
-
-                BOOST_LOG_TRIVIAL(info)
-                    << logging::add_value(additional_data, resp_data)
-                    << "response sent";
-
-                send(std::forward<decltype(response)>(response));
-            };
-
-            decorated_(std::forward<Req>(req), logging_send);
-
-        } catch (const std::exception& e) {
-            json::object err;
-            err["code"] = -1;
-            err["text"] = e.what();
-            err["where"] = "handler";
-
-            BOOST_LOG_TRIVIAL(error)
-                << logging::add_value(additional_data, err)
-                << "error";
-
-            throw;
-        }
+        return response;
     }
 
 private:
