@@ -4,29 +4,26 @@ set(CMAKE_CXX_STANDARD 20)
 
 # Подключаем Conan 1
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup()  # добавляет include пути и CONAN_LIBS
+conan_basic_setup()
 
-# Параметры потоков
+# Потоки
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-# Добавляем исполняемый файл и исходники
+# Исполняемый файл
 add_executable(game_server
     src/main.cpp
     src/http_server.cpp
-    src/http_server.h
-    src/sdk.h
-    src/model.h
     src/model.cpp
-    src/tagged.h
     src/boost_json.cpp
-    src/json_loader.h
     src/json_loader.cpp
     src/request_handler.cpp
-    src/request_handler.h
     src/logger.cpp
-    src/logger.h
 )
 
-# Линкуем все библиотеки через переменную CONAN_LIBS + Threads
-target_link_libraries(game_server ${CONAN_LIBS} Threads::Threads)
+# Линкуем все через CONAN_LIBS + зависимости Boost.Log + Threads
+target_link_libraries(game_server
+    ${CONAN_LIBS}
+    Threads::Threads
+    dl      # для Linux
+)
