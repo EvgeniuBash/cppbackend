@@ -6,12 +6,15 @@ set(CMAKE_CXX_STANDARD 20)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
 
-find_package(Boost 1.78.0 REQUIRED COMPONENTS
-    log log_setup thread system filesystem date_time regex chrono atomic
+find_package(Boost 1.78.0 REQUIRED COMPONENTS 
+    log
+    log_setup
+    thread
+    system
 )
 
 if(Boost_FOUND)
-  include_directories(${Boost_INCLUDE_DIRS})
+    include_directories(${Boost_INCLUDE_DIRS})
 endif()
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -38,9 +41,4 @@ target_link_libraries(game_server PRIVATE
     Boost::log_setup
     Boost::thread
     Boost::system
-    Boost::filesystem
-    Boost::chrono
-    Boost::regex
-    Boost::date_time
-    Boost::atomic
 )
