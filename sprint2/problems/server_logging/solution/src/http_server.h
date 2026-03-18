@@ -1,5 +1,6 @@
 #pragma once
 #include "sdk.h"
+#include "logger.h"
 
 #define BOOST_BEAST_USE_STD_STRING_VIEW
 
