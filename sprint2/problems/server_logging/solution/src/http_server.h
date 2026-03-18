@@ -7,6 +7,10 @@
 #include <boost/asio/strand.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
+#include <boost/log/trivial.hpp>
+#include <boost/log/attributes.hpp>
+#include <boost/log/utility/manipulators/add_value.hpp>
+#include <boost/json.hpp>
 
 #include <memory>
 #include <iostream>
@@ -48,8 +52,6 @@ public:
 protected:
     virtual void HandleRequest(HttpRequest&& request) = 0;
 
-    beast::tcp_stream stream_;
-
 private:
     void Read();
     void OnRead(beast::error_code ec, std::size_t bytes_read);
@@ -72,14 +74,11 @@ public:
 
 private:
     void HandleRequest(HttpRequest&& request) override {
-        auto ip = stream_.socket().remote_endpoint().address().to_string();
-
         request_handler_(
             std::move(request),
             [self = this->shared_from_this()](auto&& response) {
-                self->Write(std::move(response));
-            },
-            ip
+            self->Write(std::move(response));
+            }
         );
     }
 

@@ -32,7 +32,7 @@ int main(int argc, const char* argv[]) {
         const unsigned short port = 8080;
 
         BOOST_LOG_TRIVIAL(info)
-            << logging::add_value(additional_data,
+            << boost::log::add_value(additional_data,
                 boost::json::object{
                     {"port", port},
                     {"address", address.to_string()}
@@ -51,14 +51,14 @@ int main(int argc, const char* argv[]) {
         ioc.run();
 
         BOOST_LOG_TRIVIAL(info)
-            << logging::add_value(additional_data,
+            << boost::log::add_value(additional_data,
                 boost::json::object{{"code", 0}})
             << "server exited";
 
     } catch (const std::exception& e) {
 
         BOOST_LOG_TRIVIAL(error)
-            << logging::add_value(additional_data,
+            << boost::log::add_value(additional_data,
                 boost::json::object{
                     {"code", 1},
                     {"exception", e.what()}

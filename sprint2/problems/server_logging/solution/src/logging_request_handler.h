@@ -1,8 +1,12 @@
 #pragma once
 
 #include <boost/log/trivial.hpp>
+#include <boost/log/attributes.hpp>
+#include <boost/log/utility/manipulators/add_value.hpp>
 #include <boost/json.hpp>
 #include <chrono>
+
+BOOST_LOG_ATTRIBUTE_KEYWORD(additional_data, "AdditionalData", boost::json::value)
 
 namespace logging = boost::log;
 namespace json = boost::json;
@@ -25,7 +29,7 @@ public:
         };
 
         BOOST_LOG_TRIVIAL(info)
-            << logging::add_value(additional_data, req_data)
+            << boost::log::add_value(additional_data, req_data)
             << "request received";
 
         handler_(
@@ -48,7 +52,7 @@ public:
                 }
 
                 BOOST_LOG_TRIVIAL(info)
-                    << logging::add_value(additional_data, resp_data)
+                    << boost::log::add_value(additional_data, resp_data)
                     << "response sent";
 
                 send(std::forward<decltype(response)>(response));
