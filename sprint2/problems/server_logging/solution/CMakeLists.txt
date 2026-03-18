@@ -5,10 +5,6 @@ set(CMAKE_CXX_STANDARD 20)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
-find_package(Boost 1.78 REQUIRED COMPONENTS 
-    log log_setup thread system date_time filesystem regex chrono atomic
-)
-
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
@@ -29,11 +25,5 @@ add_executable(game_server
 
 target_link_libraries(game_server PRIVATE
     Threads::Threads
-    Boost::log
-    Boost::log_setup
-    Boost::thread
-    Boost::filesystem
-    Boost::system
-    Boost::date_time
-    dl
+    CONAN_PKG::boost
 )
