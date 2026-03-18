@@ -1,21 +1,12 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.18)
 
 project(game_server CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup()
+conan_basic_setup(TARGETS)
 
-find_package(Boost 1.78.0 REQUIRED COMPONENTS 
-    log
-    log_setup
-    thread
-    system
-)
-
-if(Boost_FOUND)
-    include_directories(${Boost_INCLUDE_DIRS})
-endif()
+find_package(Boost 1.78 REQUIRED COMPONENTS log log_setup thread system date_time filesystem)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -41,4 +32,6 @@ target_link_libraries(game_server PRIVATE
     Boost::log_setup
     Boost::thread
     Boost::system
+    Boost::date_time
+    Boost::filesystem
 )

@@ -1,43 +1,39 @@
 #include "logger.h"
+#include <iostream>
 #include <boost/log/core.hpp>
 #include <boost/log/expressions.hpp>
-#include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/sinks/text_ostream_backend.hpp>
-#include <boost/log/utility/setup/console.hpp>
+#include <boost/log/sinks/sync_frontend.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-using namespace boost::log;
+namespace logging = boost::log;
+namespace sinks = boost::log::sinks;
+namespace expr = boost::log::expressions;
+namespace json = boost::json;
 
 BOOST_LOG_ATTRIBUTE_KEYWORD(timestamp, "TimeStamp", boost::posix_time::ptime)
 BOOST_LOG_ATTRIBUTE_KEYWORD(message, "Message", std::string)
 
 void InitLogging() {
-    add_common_attributes();
+    logging::add_common_attributes();
 
-    auto sink = add_console_log(std::cout);
+    auto sink = logging::add_console_log(std::cout);
 
     sink->set_formatter(
         [](logging::record_view const& rec, logging::formatting_ostream& strm) {
 
             json::object log_obj;
 
-            auto ts = rec[timestamp];
-            if (ts) {
-                log_obj["timestamp"] =
-                    to_iso_extended_string(*ts);
-            }
+            if (auto ts = rec[timestamp])
+                log_obj["timestamp"] = to_iso_extended_string(*ts);
 
-            auto msg = rec[message];
-            if (msg) {
+            if (auto msg = rec[message])
                 log_obj["message"] = *msg;
-            }
 
-            auto data = rec[additional_data];
-            if (data) {
+            if (auto data = rec[additional_data])
                 log_obj["data"] = *data;
-            } else {
+            else
                 log_obj["data"] = json::object{};
-            }
 
             strm << json::serialize(log_obj);
         }
