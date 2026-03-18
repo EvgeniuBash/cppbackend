@@ -1,11 +1,8 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.15)
 project(game_server CXX)
 set(CMAKE_CXX_STANDARD 20)
 
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
-
-# Находим Boost через Conan
+list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
 find_package(Boost REQUIRED COMPONENTS log log_setup thread system filesystem json)
 
 add_executable(game_server
