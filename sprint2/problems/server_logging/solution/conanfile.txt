@@ -4,16 +4,10 @@ boost/1.78.0
 [options]
 boost:shared=True
 boost:without_python=True
-boost:without_atomic=False
-boost:without_chrono=False
-boost:without_date_time=False
-boost:without_filesystem=False
-boost:without_locale=False
-boost:without_regex=False
-boost:without_system=False
-boost:without_thread=False
 boost:without_log=False
-boost:without_log_setup=False
+boost:without_thread=False
+boost:without_system=False
+boost:without_filesystem=False
 boost:without_json=False
 
 [generators]
