@@ -2,7 +2,7 @@
 boost/1.78.0
 
 [options]
-boost:shared=True
+boost:shared=False
 boost:without_python=True
 boost:without_log=False
 boost:without_thread=False
@@ -11,5 +11,4 @@ boost:without_filesystem=False
 boost:without_json=False
 
 [generators]
-cmake_find_package
-cmake_find_package_multi
+cmake_find_package_multi   

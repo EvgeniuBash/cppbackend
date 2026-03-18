@@ -1,8 +1,11 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.18)
 project(game_server CXX)
 set(CMAKE_CXX_STANDARD 20)
 
-list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
+# Если используешь cmake_paths генератор от Conan
+include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
+
+# Найти Boost через Conan
 find_package(Boost REQUIRED COMPONENTS log log_setup thread system filesystem json)
 
 add_executable(game_server
