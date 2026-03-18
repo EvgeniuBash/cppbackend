@@ -1,28 +1,29 @@
-FROM gcc:11.3 as build
+FROM gcc:11.3 AS build
 
 RUN apt update && \
-    apt install -y \
-        python3-pip \
-        cmake && \
+    apt install -y python3-pip cmake libicu-dev && \
     pip3 install conan==1.*
 
-COPY conanfile.txt /app/
-RUN mkdir /app/build && cd /app/build && \
-    conan install .. --build=missing
+WORKDIR /app
 
-COPY ./src /app/src
-COPY CMakeLists.txt /app/
+COPY conanfile.txt .
+RUN mkdir build && cd build && \
+    conan install .. --build=missing -s build_type=Release -s compiler.libcxx=libstdc++11
 
-RUN cd /app/build && \
-    cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    cmake --build .
+COPY ./src ./src
+COPY CMakeLists.txt .
 
-FROM ubuntu:22.04 as run
+RUN cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && cmake --build .
+
+FROM ubuntu:22.04 AS run
 
 RUN groupadd -r www && useradd -r -g www www
 USER www
 
-COPY --from=build /app/build/bin/game_server /app/
-COPY ./data /app/data
+WORKDIR /app
 
-ENTRYPOINT ["/app/game_server", "/app/data/config.json"]
+COPY --from=build /app/build/bin/game_server ./game_server
+COPY ./data ./data
+COPY ./static ./static
+
+ENTRYPOINT ["./game_server", "./data/config.json", "./static/"]

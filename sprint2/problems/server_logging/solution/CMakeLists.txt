@@ -4,6 +4,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 # Если используешь cmake_paths генератор от Conan
 include(${CMAKE_BINARY_DIR}/conan_paths.cmake OPTIONAL)
+list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
 
 find_package(Boost REQUIRED COMPONENTS log log_setup thread system filesystem json)
 
