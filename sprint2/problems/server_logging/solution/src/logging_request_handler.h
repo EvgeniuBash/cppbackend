@@ -1,12 +1,8 @@
 #pragma once
 
-#include <boost/log/trivial.hpp>
-#include <boost/log/attributes.hpp>
-#include <boost/log/utility/manipulators/add_value.hpp>
-#include <boost/json.hpp>
+#include "logger.h"
 #include <chrono>
-
-BOOST_LOG_ATTRIBUTE_KEYWORD(additional_data, "AdditionalData", boost::json::value)
+#include <utility>
 
 namespace logging = boost::log;
 namespace json = boost::json;
@@ -20,45 +16,45 @@ public:
     template <typename Request, typename Send>
     void operator()(Request&& req, Send&& send) {
 
-    auto start = std::chrono::steady_clock::now();
+        auto start = std::chrono::steady_clock::now();
 
-    json::object req_data{
-        {"ip", "unknown"},
-        {"URI", std::string(req.target())},
-        {"method", std::string(req.method_string())}
-    };
+        json::object req_data{
+            {"ip", "unknown"},
+            {"URI", std::string(req.target())},
+            {"method", std::string(req.method_string())}
+        };
 
-    BOOST_LOG_TRIVIAL(info)
-        << boost::log::add_value(additional_data, req_data)
-        << "request received";
+        BOOST_LOG_TRIVIAL(info)
+            << boost::log::add_value(additional_data, req_data)
+            << "request received";
 
-    handler_(
-        std::forward<Request>(req),
-        [start, send = std::forward<Send>(send)](auto&& response) mutable {
+        handler_(
+            std::forward<Request>(req),
+            [start, send = std::forward<Send>(send)](auto&& response) mutable {
 
-            auto end = std::chrono::steady_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+                auto end = std::chrono::steady_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-            json::object resp_data{
-                {"response_time", duration},
-                {"code", response.result_int()}
-            };
+                json::object resp_data{
+                    {"response_time", duration},
+                    {"code", response.result_int()}
+                };
 
-            if (response.base().find(boost::beast::http::field::content_type) != response.base().end()) {
-                resp_data["content_type"] =
-                    response.base()[boost::beast::http::field::content_type].to_string();
-            } else {
-                resp_data["content_type"] = nullptr;
+                if (response.base().find(boost::beast::http::field::content_type) != response.base().end()) {
+                    resp_data["content_type"] =
+                        std::string(response.base()[boost::beast::http::field::content_type]);
+                } else {
+                    resp_data["content_type"] = nullptr;
+                }
+
+                BOOST_LOG_TRIVIAL(info)
+                    << boost::log::add_value(additional_data, resp_data)
+                    << "response sent";
+
+                send(std::forward<decltype(response)>(response));
             }
-
-            BOOST_LOG_TRIVIAL(info)
-                << boost::log::add_value(additional_data, resp_data)
-                << "response sent";
-
-            send(std::forward<decltype(response)>(response));
-        }
-    );
-}
+        );
+    }
 
 private:
     Handler& handler_;

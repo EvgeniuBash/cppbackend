@@ -132,8 +132,7 @@ private:
     void OnAccept(beast::error_code ec, tcp::socket socket) {
         if (ec) {
             BOOST_LOG_TRIVIAL(error)
-                << boost::log::add_value(
-                       boost::log::attributes::named_scope::value_type::value_type("AdditionalData"),
+                << boost::log::add_value(,
                        json::object{
                            {"code", ec.value()},
                            {"text", ec.message()},
