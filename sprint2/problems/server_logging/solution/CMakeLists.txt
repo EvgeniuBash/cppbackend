@@ -2,11 +2,9 @@ cmake_minimum_required(VERSION 3.18)
 project(game_server CXX)
 set(CMAKE_CXX_STANDARD 20)
 
-# Подключаем Conan
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup(TARGETS)
+conan_basic_setup()
 
-# Создаём исполняемый файл
 add_executable(game_server
     src/main.cpp
     src/http_server.cpp
@@ -24,13 +22,5 @@ add_executable(game_server
     src/logger.h
 )
 
-# Линкуем через Conan
-target_link_libraries(game_server
-    PRIVATE
-    CONAN_PKG::boost_log
-    CONAN_PKG::boost_log_setup
-    CONAN_PKG::boost_thread
-    CONAN_PKG::boost_system
-    CONAN_PKG::boost_filesystem
-    CONAN_PKG::boost_json
-)
+# Линкуем через переменную Conan
+target_link_libraries(game_server ${CONAN_LIBS})
