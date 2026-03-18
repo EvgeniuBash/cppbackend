@@ -1,13 +1,12 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.15)
 project(game_server CXX)
 set(CMAKE_CXX_STANDARD 20)
 
-# Если используешь cmake_paths генератор от Conan
-include(${CMAKE_BINARY_DIR}/conan_paths.cmake OPTIONAL)
-list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
+# Подключаем Conan
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+conan_basic_setup(TARGETS)
 
-find_package(Boost REQUIRED COMPONENTS log log_setup thread system filesystem json)
-
+# Создаем исполняемый файл из всех исходников
 add_executable(game_server
     src/main.cpp
     src/http_server.cpp
@@ -25,12 +24,12 @@ add_executable(game_server
     src/logger.h
 )
 
-target_link_libraries(game_server
-    PRIVATE
-    Boost::log
-    Boost::log_setup
-    Boost::thread
-    Boost::system
-    Boost::filesystem
-    Boost::json
+# Линкуем через Conan
+target_link_libraries(game_server PRIVATE
+    CONAN_PKG::boost_log
+    CONAN_PKG::boost_log_setup
+    CONAN_PKG::boost_thread
+    CONAN_PKG::boost_system
+    CONAN_PKG::boost_filesystem
+    CONAN_PKG::boost_json
 )
