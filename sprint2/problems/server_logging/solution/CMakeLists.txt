@@ -30,6 +30,4 @@ target_link_libraries(game_server
     Boost::system
     Boost::filesystem
     Boost::json
-    Threads::Threads
-    dl
 )
