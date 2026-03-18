@@ -48,6 +48,8 @@ public:
 protected:
     virtual void HandleRequest(HttpRequest&& request) = 0;
 
+    beast::tcp_stream stream_;
+
 private:
     void Read();
     void OnRead(beast::error_code ec, std::size_t bytes_read);
@@ -70,11 +72,15 @@ public:
 
 private:
     void HandleRequest(HttpRequest&& request) override {
+        auto ip = stream_.socket().remote_endpoint().address().to_string();
+
         request_handler_(
             std::move(request),
             [self = this->shared_from_this()](auto&& response) {
                 self->Write(std::move(response));
-            });
+            },
+            ip
+        );
     }
 
     RequestHandler request_handler_;
@@ -125,7 +131,15 @@ private:
 
     void OnAccept(beast::error_code ec, tcp::socket socket) {
         if (ec) {
-            std::cerr << "Accept error: " << ec.message() << std::endl;
+            BOOST_LOG_TRIVIAL(error)
+                << logging::add_value(
+                       boost::log::attributes::named_scope::value_type::value_type("AdditionalData"),
+                       json::object{
+                           {"code", ec.value()},
+                           {"text", ec.message()},
+                           {"where", "accept"}
+                       })
+                << "error";
             return;
         }
 
