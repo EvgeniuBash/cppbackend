@@ -3,9 +3,8 @@ project(game_server CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 # Если используешь cmake_paths генератор от Conan
-include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
+include(${CMAKE_BINARY_DIR}/conan_paths.cmake OPTIONAL)
 
-# Найти Boost через Conan
 find_package(Boost REQUIRED COMPONENTS log log_setup thread system filesystem json)
 
 add_executable(game_server
