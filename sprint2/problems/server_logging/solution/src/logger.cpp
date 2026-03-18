@@ -17,7 +17,10 @@ BOOST_LOG_ATTRIBUTE_KEYWORD(message, "Message", std::string)
 void InitLogging() {
     logging::add_common_attributes();
 
-    auto sink = logging::add_console_log(std::cout);
+    auto sink = logging::add_console_log(
+        std::cout,
+        boost::log::keywords::auto_flush = true // ✅ автофлаш
+    );
 
     sink->set_formatter(
         [](logging::record_view const& rec, logging::formatting_ostream& strm) {
@@ -38,4 +41,5 @@ void InitLogging() {
             strm << json::serialize(log_obj);
         }
     );
+    logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::info);
 }
