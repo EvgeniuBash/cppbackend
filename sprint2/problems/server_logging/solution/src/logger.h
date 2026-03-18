@@ -1,6 +1,7 @@
 #pragma once
 
 #include <boost/log/attributes.hpp>
+#include <boost/log/expressions/keyword.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/json.hpp>
 

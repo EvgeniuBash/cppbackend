@@ -21,6 +21,7 @@ namespace net = boost::asio;
 using tcp = net::ip::tcp;
 namespace beast = boost::beast;
 namespace http = beast::http;
+namespace json = boost::json;
 
 class SessionBase : public std::enable_shared_from_this<SessionBase> {
 public:
@@ -131,7 +132,7 @@ private:
     void OnAccept(beast::error_code ec, tcp::socket socket) {
         if (ec) {
             BOOST_LOG_TRIVIAL(error)
-                << logging::add_value(
+                << boost::log::add_value(
                        boost::log::attributes::named_scope::value_type::value_type("AdditionalData"),
                        json::object{
                            {"code", ec.value()},
