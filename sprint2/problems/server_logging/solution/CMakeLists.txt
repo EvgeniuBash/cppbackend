@@ -34,4 +34,11 @@ target_link_libraries(game_server PRIVATE
     Threads::Threads
     Boost::log
     Boost::log_setup
+    Boost::thread
+    Boost::filesystem
+    Boost::chrono
+    Boost::regex
+    Boost::date_time
+    Boost::atomic
+    Boost::system
 )
