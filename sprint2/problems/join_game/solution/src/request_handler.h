@@ -166,11 +166,11 @@ public:
 
         std::string target = std::string(req.target());
     
-        if (target.starts_with("/api/v1/join")) {
+        if (target == "/api/v1/game/join") {
             api_handler_.HandleJoin(std::move(req), std::move(send));
             return;
         }
-        else if (target.starts_with("/api/v1/players")) {
+        else if (target == "/api/v1/game/players") {
             api_handler_.HandlePlayers(std::move(req), std::move(send));
             return;
         }
@@ -178,10 +178,19 @@ public:
         if (req.method() != http::verb::get) {
             http::response<http::string_body> response{
                 http::status::method_not_allowed, req.version()};
-            response.prepare_payload();
-            send(std::move(response));
-            return;
-        }
+                response.set(http::field::content_type, "application/json");
+
+                json::object body{
+                    {"code", "invalidMethod"},
+                    {"message", "Invalid method"}
+                };
+
+                response.body() = json::serialize(body);
+                response.prepare_payload();
+
+                send(std::move(response));
+                return;
+            }
 
         if (target == MAPS_ENDPOINT) {
             json::array maps_array;
