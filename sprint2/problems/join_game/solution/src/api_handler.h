@@ -79,7 +79,7 @@ public:
             return;
         }
 
-        std::string token = auth_header_it->value().to_string();
+        std::string token = std::string(auth_header_it->value());
         const std::string prefix = "Bearer ";
         if (token.substr(0, prefix.size()) != prefix) {
             sendUnauthorized(req, send, "invalidToken", "Authorization header is invalid");
