@@ -164,6 +164,11 @@ public:
                     Send&& send) {
 
         std::string target = std::string(req.target());
+    
+        if (target.starts_with(API_PREFIX)) {
+            api_handler_.Handle(std::move(req), std::move(send));
+            return;
+        }
 
         if (req.method() != http::verb::get) {
             http::response<http::string_body> response{
@@ -252,7 +257,7 @@ public:
         }
 
         if (target.starts_with(API_PREFIX)) {
-
+         
             json::object error;
 
             error["code"] = "badRequest";
