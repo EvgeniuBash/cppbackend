@@ -87,7 +87,14 @@ public:
         }
         token = token.substr(prefix.size());
 
-        model::Player* player = players_.GetPlayerByToken(token);
+        model::Player* player = nullptr;
+            for (auto& p : players_.GetAllPlayers()) {
+                if (p.GetToken() == token) {
+                    player = &p;
+                    break;
+                }
+            }
+
         if (!player) {
             sendUnauthorized(req, send, "unknownToken", "Player token has not been found");
             return;
