@@ -88,8 +88,8 @@ public:
         token = token.substr(prefix.size());
 
         model::Player* player = nullptr;
-        for (auto& map_pair : game_.GetAllMaps()) { // если есть метод GetAllMaps()
-            for (auto* p : players_.GetPlayersByMap(map_pair.first)) {
+        for (auto& map : game_.GetMaps()) {
+            for (auto* p : players_.GetPlayersByMap(map.GetId())) {
                 if (p->GetToken() == token) {
                     player = p;
                     break;
