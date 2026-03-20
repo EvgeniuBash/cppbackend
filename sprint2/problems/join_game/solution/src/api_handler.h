@@ -5,7 +5,6 @@
 #include "http_server.h"
 #include "player.h"
 #include <string>
-#include <string_view>
 
 namespace http_handler {
 
@@ -20,17 +19,7 @@ public:
     template <typename Send>
     void HandleJoin(const http::request<http::string_body>& req, Send&& send) {
         if (req.method() != http::verb::post) {
-            json::object res_obj{
-                {"code", "invalidMethod"},
-                {"message", "Only POST method is expected"}
-            };
-            http::response<http::string_body> res{http::status::method_not_allowed, req.version()};
-            res.set(http::field::allow, "POST");
-            res.set(http::field::content_type, "application/json");
-            res.set(http::field::cache_control, "no-cache");
-            res.body() = json::serialize(res_obj);
-            res.prepare_payload();
-            send(std::move(res));
+            sendMethodNotAllowed(req, send, "POST");
             return;
         }
 
@@ -38,66 +27,27 @@ public:
         try {
             body = json::parse(req.body());
         } catch (...) {
-            json::object res_obj{
-                {"code", "invalidArgument"},
-                {"message", "Join game request parse error"}
-            };
-            http::response<http::string_body> res{http::status::bad_request, req.version()};
-            res.set(http::field::content_type, "application/json");
-            res.set(http::field::cache_control, "no-cache");
-            res.body() = json::serialize(res_obj);
-            res.prepare_payload();
-            send(std::move(res));
+            sendBadRequest(req, send, "Join game request parse error");
             return;
         }
 
         auto obj = body.as_object();
-        std::string name;
-        std::string map_id;
-
-        try {
-            name = std::string(obj["userName"].as_string());
-            map_id = std::string(obj["mapId"].as_string());
-        } catch (...) {
-            json::object res_obj{
-                {"code", "invalidArgument"},
-                {"message", "Join game request parse error"}
-            };
-            http::response<http::string_body> res{http::status::bad_request, req.version()};
-            res.set(http::field::content_type, "application/json");
-            res.set(http::field::cache_control, "no-cache");
-            res.body() = json::serialize(res_obj);
-            res.prepare_payload();
-            send(std::move(res));
+        if (!obj.contains("userName") || !obj.contains("mapId")) {
+            sendBadRequest(req, send, "Missing userName or mapId");
             return;
         }
 
+        std::string name = obj["userName"].as_string().c_str();
+        std::string map_id = obj["mapId"].as_string().c_str();
+
         if (name.empty()) {
-            json::object res_obj{
-                {"code", "invalidArgument"},
-                {"message", "Invalid name"}
-            };
-            http::response<http::string_body> res{http::status::bad_request, req.version()};
-            res.set(http::field::content_type, "application/json");
-            res.set(http::field::cache_control, "no-cache");
-            res.body() = json::serialize(res_obj);
-            res.prepare_payload();
-            send(std::move(res));
+            sendBadRequest(req, send, "Invalid name");
             return;
         }
 
         const model::Map* map = game_.FindMap(model::Map::Id{map_id});
         if (!map) {
-            json::object res_obj{
-                {"code", "mapNotFound"},
-                {"message", "Map not found"}
-            };
-            http::response<http::string_body> res{http::status::not_found, req.version()};
-            res.set(http::field::content_type, "application/json");
-            res.set(http::field::cache_control, "no-cache");
-            res.body() = json::serialize(res_obj);
-            res.prepare_payload();
-            send(std::move(res));
+            sendNotFound(req, send, "mapNotFound", "Map not found");
             return;
         }
 
@@ -119,63 +69,91 @@ public:
     template <typename Send>
     void HandlePlayers(const http::request<http::string_body>& req, Send&& send) {
         if (req.method() != http::verb::get && req.method() != http::verb::head) {
-            json::object res_obj{
-                {"code", "invalidMethod"},
-                {"message", "Invalid method"}
-            };
-            http::response<http::string_body> res{http::status::method_not_allowed, req.version()};
-            res.set(http::field::allow, "GET, HEAD");
-            res.set(http::field::content_type, "application/json");
-            res.set(http::field::cache_control, "no-cache");
-            res.body() = json::serialize(res_obj);
-            res.prepare_payload();
-            send(std::move(res));
+            sendMethodNotAllowed(req, send, "GET, HEAD");
             return;
         }
 
-        auto auth_it = req.find(http::field::authorization);
-        if (auth_it == req.end() || !auth_it->value().starts_with("Bearer ")) {
-            json::object res_obj{
-                {"code", "invalidToken"},
-                {"message", "Authorization header is missing or invalid"}
-            };
-            http::response<http::string_body> res{http::status::unauthorized, req.version()};
-            res.set(http::field::content_type, "application/json");
-            res.set(http::field::cache_control, "no-cache");
-            res.body() = json::serialize(res_obj);
-            res.prepare_payload();
-            send(std::move(res));
+        auto auth_header_it = req.find(http::field::authorization);
+        if (auth_header_it == req.end() || auth_header_it->empty()) {
+            sendUnauthorized(req, send, "invalidToken", "Authorization header is missing");
             return;
         }
 
-        std::string auth_header = std::string(auth_it->value());
-        std::string token = std::string(auth_header.substr(7));
+        std::string token = auth_header_it->to_string();
+        const std::string prefix = "Bearer ";
+        if (token.substr(0, prefix.size()) != prefix) {
+            sendUnauthorized(req, send, "invalidToken", "Authorization header is invalid");
+            return;
+        }
+        token = token.substr(prefix.size());
 
-        model::Player* player = players_.FindByToken(token);
+        model::Player* player = players_.GetPlayerByToken(token);
         if (!player) {
-            json::object res_obj{
-                {"code", "unknownToken"},
-                {"message", "Player token has not been found"}
-            };
-            http::response<http::string_body> res{http::status::unauthorized, req.version()};
-            res.set(http::field::content_type, "application/json");
-            res.set(http::field::cache_control, "no-cache");
-            res.body() = json::serialize(res_obj);
-            res.prepare_payload();
-            send(std::move(res));
+            sendUnauthorized(req, send, "unknownToken", "Player token has not been found");
             return;
         }
 
+        const model::Map::Id map_id = player->GetMapId();
         json::object resp;
-        for (auto* p : players_.GetPlayersByMap(player->GetMapId())) {
-            json::object obj{{"name", p->GetName()}};
-            resp[std::to_string(p->GetId())] = obj;
+
+        for (auto* p : players_.GetPlayersByMap(map_id)) {
+            resp[std::to_string(p->GetId())] = {{"name", p->GetName()}};
         }
 
         http::response<http::string_body> res{http::status::ok, req.version()};
         res.set(http::field::content_type, "application/json");
         res.set(http::field::cache_control, "no-cache");
-        res.body() = json::serialize(resp);
+        if (req.method() != http::verb::head) {
+            res.body() = json::serialize(resp);
+        }
+        res.prepare_payload();
+        send(std::move(res));
+    }
+
+private:
+    template <typename Send>
+    void sendBadRequest(const http::request<http::string_body>& req, Send&& send, const std::string& message) {
+        sendError(req, send, http::status::bad_request, "invalidArgument", message);
+    }
+
+    template <typename Send>
+    void sendNotFound(const http::request<http::string_body>& req, Send&& send, const std::string& code, const std::string& message) {
+        sendError(req, send, http::status::not_found, code, message);
+    }
+
+    template <typename Send>
+    void sendUnauthorized(const http::request<http::string_body>& req, Send&& send, const std::string& code, const std::string& message) {
+        sendError(req, send, http::status::unauthorized, code, message);
+    }
+
+    template <typename Send>
+    void sendMethodNotAllowed(const http::request<http::string_body>& req, Send&& send, const std::string& allow) {
+        http::response<http::string_body> res{http::status::method_not_allowed, req.version()};
+        res.set(http::field::allow, allow);
+        res.set(http::field::content_type, "application/json");
+        res.set(http::field::cache_control, "no-cache");
+
+        json::object body{
+            {"code", "invalidMethod"},
+            {"message", "Invalid method"}
+        };
+        res.body() = json::serialize(body);
+        res.prepare_payload();
+        send(std::move(res));
+    }
+
+    template <typename Send>
+    void sendError(const http::request<http::string_body>& req, Send&& send, http::status status,
+                   const std::string& code, const std::string& message) {
+        http::response<http::string_body> res{status, req.version()};
+        res.set(http::field::content_type, "application/json");
+        res.set(http::field::cache_control, "no-cache");
+
+        json::object body{
+            {"code", code},
+            {"message", message}
+        };
+        res.body() = json::serialize(body);
         res.prepare_payload();
         send(std::move(res));
     }
