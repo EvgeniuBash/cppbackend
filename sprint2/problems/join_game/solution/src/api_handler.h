@@ -88,12 +88,15 @@ public:
         token = token.substr(prefix.size());
 
         model::Player* player = nullptr;
-            for (auto& p : players_.GetAllPlayers()) {
-                if (p.GetToken() == token) {
-                    player = &p;
+        for (auto& map_pair : game_.GetAllMaps()) { // если есть метод GetAllMaps()
+            for (auto* p : players_.GetPlayersByMap(map_pair.first)) {
+                if (p->GetToken() == token) {
+                    player = p;
                     break;
                 }
             }
+            if (player) break;
+        }
 
         if (!player) {
             sendUnauthorized(req, send, "unknownToken", "Player token has not been found");
