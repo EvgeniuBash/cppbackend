@@ -73,13 +73,13 @@ public:
             return;
         }
 
-        auto auth_header_it = req.find(http::field::authorization);
-        if (auth_header_it == req.end() || auth_header_it->empty()) {
+        auto auth_header_it = req.find(boost::beast::http::field::authorization);
+        if (auth_header_it == req.end() || auth_header_it->value().empty()) {
             sendUnauthorized(req, send, "invalidToken", "Authorization header is missing");
             return;
         }
 
-        std::string token = auth_header_it->to_string();
+        std::string token(auth_header_it->value());
         const std::string prefix = "Bearer ";
         if (token.substr(0, prefix.size()) != prefix) {
             sendUnauthorized(req, send, "invalidToken", "Authorization header is invalid");
