@@ -166,7 +166,8 @@ public:
         std::string target = std::string(req.target());
     
         if (target.starts_with(API_PREFIX)) {
-            api_handler_.Handle(std::move(req), std::move(send));
+            api_handler_.Handle(std::forward<decltype(req)>(req),
+                                std::forward<decltype(send)>(send));
             return;
         }
 
@@ -254,26 +255,7 @@ public:
 
             send(std::move(response));
             return;
-        }
-
-        if (target.starts_with(API_PREFIX)) {
-         
-            json::object error;
-
-            error["code"] = "badRequest";
-            error["message"] = "Bad request";
-
-            http::response<http::string_body> response{
-                http::status::bad_request, req.version()};
-
-            response.set(http::field::content_type, "application/json");
-            response.body() = json::serialize(error);
-            response.prepare_payload();
-
-            send(std::move(response));
-            return;
-
-        } else {
+       }    else {
                 auto decoded_target = UrlDecode(target);
 
                 fs::path file_path;
@@ -349,6 +331,7 @@ public:
 private:
     model::Game& game_;
     std::filesystem::path static_root_;
+    model::Players players_;
     ApiHandler api_handler_;
 };
 

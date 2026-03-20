@@ -15,9 +15,28 @@ public:
     ApiHandler(model::Game& game, model::PlayerManager& players)
         : game_(game), players_(players) {}
 
+    
     template <typename Body, typename Allocator, typename Send>
-    void Handle(http::request<Body, http::basic_fields<Allocator>>&& req,
-                Send&& send);
+    void ApiHandler::Handle(http::request<Body, http::basic_fields<Allocator>>&& req,
+    Send&& send) {
+
+        std::string target = std::string(req.target());
+
+        if (target == "/api/v1/game/join") {
+            HandleJoin(req, send);
+            return;
+        }
+
+        if (target == "/api/v1/game/players") {
+            HandlePlayers(req, send);
+            return;
+        }
+
+        http::response<http::string_body> res{http::status::bad_request, req.version()};
+        res.body() = "Bad request";
+        res.prepare_payload();
+        send(std::move(res));
+    }
 
 private:
     model::Game& game_;
