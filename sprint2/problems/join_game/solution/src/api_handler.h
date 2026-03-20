@@ -3,6 +3,7 @@
 #include "model.h"
 #include <boost/json.hpp>
 #include "http_server.h"
+#include "player.h"
 #include <string>
 
 namespace http_handler {

@@ -4,6 +4,7 @@
 #include "http_server.h"
 #include "model.h"
 #include "api_handler.h"
+#include "player.h"
 #include <string>
 #include <string_view>
 #include <algorithm>
@@ -165,9 +166,12 @@ public:
 
         std::string target = std::string(req.target());
     
-        if (target.starts_with(API_PREFIX)) {
-            api_handler_.Handle(std::forward<decltype(req)>(req),
-                                std::forward<decltype(send)>(send));
+        if (target.starts_with("/api/v1/join")) {
+            api_handler_.HandleJoin(std::move(req), std::move(send));
+            return;
+        }
+        else if (target.starts_with("/api/v1/players")) {
+            api_handler_.HandlePlayers(std::move(req), std::move(send));
             return;
         }
 
