@@ -331,7 +331,7 @@ public:
 private:
     model::Game& game_;
     std::filesystem::path static_root_;
-    model::Players players_;
+    model::PlayerManager players_;
     ApiHandler api_handler_;
 };
 
