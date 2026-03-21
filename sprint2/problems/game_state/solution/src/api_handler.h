@@ -123,25 +123,29 @@ public:
     template <typename Body, typename Allocator, typename Send>
     void HandleState(http::request<Body, http::basic_fields<Allocator>>& req, Send&& send) {
         if (req.method() != http::verb::get && req.method() != http::verb::head) {
-            return Send405(send, req);
+            sendMethodNotAllowed(req, send, "GET, HEAD");
+            return;
         }
 
         auto it = req.find(http::field::authorization);
         if (it == req.end()) {
-            return Send401(send, "invalidToken", "Authorization header is required");
+            sendUnauthorized(req, send, "invalidToken", "Authorization header is required");
+            return;
         }
 
         std::string auth = std::string(it->value());
 
         if (!auth.starts_with("Bearer ")) {
-            return Send401(send, "invalidToken", "Authorization header is invalid");
+            sendUnauthorized(req, send, "invalidToken", "Authorization header is invalid");
+            return;
         }
 
         std::string token = auth.substr(7);
 
         auto player = players_.FindByToken(token);
         if (!player) {
-            return Send401(send, "unknownToken", "Player token has not been found");
+            sendUnauthorized(req, send, "unknownToken", "Player token has not been found");
+            return;
         }
 
         json::object players_json;
