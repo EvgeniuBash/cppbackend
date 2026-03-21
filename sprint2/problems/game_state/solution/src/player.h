@@ -5,6 +5,8 @@
 #include <vector>
 #include "model.h"
 
+namespace model {
+
 struct Position {
     double x = 0.0;
     double y = 0.0;
@@ -22,8 +24,6 @@ enum class Direction {
     EAST
 };
 
-namespace model {
-
 using PlayerId = uint32_t;
 using Token = std::string;
 
@@ -39,6 +39,9 @@ public:
     const Position& GetPosition() const { return pos_; }
     const Speed& GetSpeed() const { return speed_; }
     Direction GetDirection() const { return dir_; }
+    void SetPosition(Position pos) { pos_ = pos; }
+    void SetSpeed(Speed speed) { speed_ = speed; }
+    void SetDirection(Direction dir) { dir_ = dir; }
 
 private:
     PlayerId id_;
