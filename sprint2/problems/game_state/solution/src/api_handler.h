@@ -142,7 +142,18 @@ public:
 
         std::string token = auth.substr(7);
 
-        if (token.empty()) {
+        auto isValidToken = [](const std::string& t) {
+            if (t.size() != 32) return false;
+
+            for (char c : t) {
+                if (!std::isxdigit(static_cast<unsigned char>(c))) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        if (!isValidToken(token)) {
             sendUnauthorized(req, send, "invalidToken", "Invalid token");
             return;
         }
