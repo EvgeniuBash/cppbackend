@@ -177,7 +177,7 @@ public:
         }
 
         if (target == GAME_STATE) {
-            api_handler_.HandleState(std::move(req), std::move(send));
+            api_handler_.HandleState(req, std::move(send));
             return;
         }
 
