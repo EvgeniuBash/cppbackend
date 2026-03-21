@@ -142,6 +142,11 @@ public:
 
         std::string token = auth.substr(7);
 
+        if (token.empty()) {
+            sendUnauthorized(req, send, "invalidToken", "Invalid token");
+            return;
+        }
+
         auto player = players_.FindByToken(token);
         if (!player) {
             sendUnauthorized(req, send, "unknownToken", "Player token has not been found");
