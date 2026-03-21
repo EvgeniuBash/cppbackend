@@ -22,9 +22,9 @@ Player& PlayerManager::AddPlayer(std::string name, const Map::Id& map_id) {
     Player& p = players_.back();
 
     token_to_player_[p.GetToken()] = &p;
-    p.SetPosition({0.0, 0.0});
-    p.SetSpeed({0.0, 0.0});
-    p.SetDirection(Direction::NORTH);
+    p.GetPosition({0.0, 0.0});
+    p.GetSpeed({0.0, 0.0});
+    p.GetDirection(Direction::NORTH);
 
     return p;
 }
