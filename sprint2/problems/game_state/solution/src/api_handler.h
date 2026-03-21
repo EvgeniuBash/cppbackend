@@ -152,7 +152,7 @@ public:
             json::object obj;
 
             obj["pos"] = {p->GetPosition().x, p->GetPosition().y};
-            obj["speed"] = {p->GetSpeed().dx, p->GetSpeed().dy};
+            obj["speed"] = {p->GetSpeed().vx, p->GetSpeed().vy};
             obj["dir"] = "U";
 
             players_json[std::to_string(p->GetId())] = obj;
