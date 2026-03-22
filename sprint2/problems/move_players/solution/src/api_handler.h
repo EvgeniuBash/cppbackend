@@ -16,7 +16,7 @@ public:
     ApiHandler(model::Game& game, model::PlayerManager& players)
         : game_(game), players_(players) {}
 
-    template <typename Send>
+template <typename Send>
     void HandleJoin(const http::request<http::string_body>& req, Send&& send) {
         if (req.method() != http::verb::post) {
             sendMethodNotAllowed(req, send, "POST");
@@ -68,217 +68,124 @@ public:
 
     template <typename Send>
     void HandlePlayers(const http::request<http::string_body>& req, Send&& send) {
-        if (req.method() != http::verb::get && req.method() != http::verb::head) {
-            sendMethodNotAllowed(req, send, "GET, HEAD");
-            return;
-        }
-
-        auto auth_header_it = req.find(boost::beast::http::field::authorization);
-        if (auth_header_it == req.end() || auth_header_it->value().empty()) {
-            sendUnauthorized(req, send, "invalidToken", "Authorization header is missing");
-            return;
-        }
-
-        std::string token = std::string(auth_header_it->value());
-        const std::string prefix = "Bearer ";
-        if (token.substr(0, prefix.size()) != prefix) {
-            sendUnauthorized(req, send, "invalidToken", "Authorization header is invalid");
-            return;
-        }
-        token = token.substr(prefix.size());
-
-        model::Player* player = nullptr;
-        for (auto& map : game_.GetMaps()) {
-            for (auto* p : players_.GetPlayersByMap(map.GetId())) {
-                if (p->GetToken() == token) {
-                    player = p;
-                    break;
-                }
+        ExecuteAuthorized(req, send, [&](model::Player* player) {
+            json::object players_json;
+            for (auto* p : players_.GetPlayersByMap(player->GetMapId())) {
+                players_json[std::to_string(p->GetId())] = {{"name", p->GetName()}};
             }
-            if (player) break;
-        }
 
-        if (!player) {
-            sendUnauthorized(req, send, "unknownToken", "Player token has not been found");
-            return;
-        }
+            json::object result;
+            result["players"] = players_json;
 
-        const model::Map::Id map_id = player->GetMapId();
-        json::object resp;
-
-        for (auto* p : players_.GetPlayersByMap(map_id)) {
-            resp[std::to_string(p->GetId())] = {{"name", p->GetName()}};
-        }
-
-        http::response<http::string_body> res{http::status::ok, req.version()};
-        res.set(http::field::content_type, "application/json");
-        res.set(http::field::cache_control, "no-cache");
-        if (req.method() != http::verb::head) {
-            res.body() = json::serialize(resp);
-        }
-        res.prepare_payload();
-        send(std::move(res));
+            http::response<http::string_body> res{http::status::ok, req.version()};
+            res.set(http::field::content_type, "application/json");
+            res.set(http::field::cache_control, "no-cache");
+            if (req.method() != http::verb::head) {
+                res.body() = json::serialize(result);
+            }
+            res.prepare_payload();
+            send(std::move(res));
+        });
     }
 
     template <typename Body, typename Allocator, typename Send>
     void HandleState(http::request<Body, http::basic_fields<Allocator>>& req, Send&& send) {
-        if (req.method() != http::verb::get && req.method() != http::verb::head) {
-            sendMethodNotAllowed(req, send, "GET, HEAD");
-            return;
-        }
+        ExecuteAuthorized(req, send, [&](model::Player* player) {
+            json::object players_json;
 
-        auto it = req.find(http::field::authorization);
-        if (it == req.end()) {
-            sendUnauthorized(req, send, "invalidToken", "Authorization header is required");
-            return;
-        }
-
-        std::string auth = std::string(it->value());
-
-        if (!auth.starts_with("Bearer ")) {
-            sendUnauthorized(req, send, "invalidToken", "Authorization header is invalid");
-            return;
-        }
-
-        std::string token = auth.substr(7);
-
-        auto isValidToken = [](const std::string& t) {
-            if (t.size() != 32) return false;
-
-            for (char c : t) {
-                if (!std::isxdigit(static_cast<unsigned char>(c))) {
-                    return false;
-                }
+            for (auto* p : players_.GetPlayersByMap(player->GetMapId())) {
+                json::object obj;
+                obj["pos"] = {p->GetPosition().x, p->GetPosition().y};
+                obj["speed"] = {p->GetSpeed().vx, p->GetSpeed().vy};
+                obj["dir"] = "U";  // направление по умолчанию
+                players_json[std::to_string(p->GetId())] = obj;
             }
-            return true;
-        };
 
-        if (!isValidToken(token)) {
-            sendUnauthorized(req, send, "invalidToken", "Invalid token");
-            return;
-        }
+            json::object result;
+            result["players"] = players_json;
 
-        auto player = players_.FindByToken(token);
-        if (!player) {
-            sendUnauthorized(req, send, "unknownToken", "Player token has not been found");
-            return;
-        }
-
-        json::object players_json;
-
-        auto map_id = player->GetMapId();
-
-        for (auto* p : players_.GetPlayersByMap(map_id)) {
-            json::object obj;
-
-            obj["pos"] = {p->GetPosition().x, p->GetPosition().y};
-            obj["speed"] = {p->GetSpeed().vx, p->GetSpeed().vy};
-            obj["dir"] = "U";
-
-            players_json[std::to_string(p->GetId())] = obj;
-        }
-
-        json::object result;
-        result["players"] = players_json;
-
-        http::response<http::string_body> res{http::status::ok, req.version()};
-        res.set(http::field::content_type, "application/json");
-        res.set(http::field::cache_control, "no-cache");
-
-        if (req.method() != http::verb::head) {
-            res.body() = json::serialize(result);
-        }
-
-        res.prepare_payload();
-        send(std::move(res));
+            http::response<http::string_body> res{http::status::ok, req.version()};
+            res.set(http::field::content_type, "application/json");
+            res.set(http::field::cache_control, "no-cache");
+            if (req.method() != http::verb::head) {
+                res.body() = json::serialize(result);
+            }
+            res.prepare_payload();
+            send(std::move(res));
+        });
     }
 
     template <typename Body, typename Allocator, typename Send>
     void HandleAction(http::request<Body, http::basic_fields<Allocator>>& req, Send&& send) {
-        if (req.method() != http::verb::post) {
-            sendMethodNotAllowed(req, send, "POST");
-            return;
-        }
+        ExecuteAuthorized(req, send, [&](model::Player* player) {
+            json::value body;
+            try { body = json::parse(req.body()); }
+            catch (...) { sendBadRequest(req, send, "Failed to parse action"); return; }
 
-        if (req[http::field::content_type] != "application/json") {
-            sendBadRequest(req, send, "Invalid content type");
-            return;
-        }
+            if (!body.as_object().contains("move")) {
+                sendBadRequest(req, send, "Failed to parse action"); return;
+            }
 
+            std::string move = body.at("move").as_string().c_str();
+            if (move != "L" && move != "R" && move != "U" && move != "D" && move != "") {
+                sendBadRequest(req, send, "Failed to parse action"); return;
+            }
+
+            double s = GetMapSpeed(player->GetMapId());
+
+            if (move == "L")      player->SetSpeed({-s, 0}), player->SetDirection(model::Direction::WEST);
+            else if (move == "R") player->SetSpeed({s, 0}),  player->SetDirection(model::Direction::EAST);
+            else if (move == "U") player->SetSpeed({0, -s}), player->SetDirection(model::Direction::NORTH);
+            else if (move == "D") player->SetSpeed({0, s}),  player->SetDirection(model::Direction::SOUTH);
+            else                  player->SetSpeed({0, 0});
+
+            http::response<http::string_body> res{http::status::ok, req.version()};
+            res.set(http::field::content_type, "application/json");
+            res.set(http::field::cache_control, "no-cache");
+            res.body() = "{}";
+            res.prepare_payload();
+            send(std::move(res));
+        });
+    }
+
+private:
+    template <typename Body, typename Allocator, typename Send, typename Fn>
+    void ExecuteAuthorized(const http::request<Body, http::basic_fields<Allocator>>& req, Send&& send, Fn&& action) {
         auto it = req.find(http::field::authorization);
-        if (it == req.end()) {
-            sendUnauthorized(req, send, "invalidToken", "Authorization header is required");
+        if (it == req.end() || it->value().empty()) {
+            sendUnauthorized(req, send, "invalidToken", "Authorization header missing");
             return;
         }
 
         std::string auth = std::string(it->value());
-
-        if (!auth.starts_with("Bearer ")) {
-            sendUnauthorized(req, send, "invalidToken", "Authorization header is invalid");
+        const std::string prefix = "Bearer ";
+        if (!auth.starts_with(prefix)) {
+            sendUnauthorized(req, send, "invalidToken", "Authorization header invalid");
             return;
         }
 
-        std::string token = auth.substr(7);
+        std::string token = auth.substr(prefix.size());
+
+        auto isValidToken = [](const std::string& t) {
+            if (t.size() != 32) return false;
+            for (char c : t) if (!std::isxdigit(static_cast<unsigned char>(c))) return false;
+            return true;
+        };
+
+        if (!isValidToken(token)) {
+            sendUnauthorized(req, send, "invalidToken", "Token invalid");
+            return;
+        }
 
         auto player = players_.FindByToken(token);
         if (!player) {
-            sendUnauthorized(req, send, "unknownToken", "Player token has not been found");
+            sendUnauthorized(req, send, "unknownToken", "Token not found");
             return;
         }
 
-        json::value body;
-        try {
-            body = json::parse(req.body());
-        } catch (...) {
-            sendBadRequest(req, send, "Failed to parse action");
-            return;
-        }
-
-        if (!body.as_object().contains("move")) {
-            sendBadRequest(req, send, "Failed to parse action");
-            return;
-        }
-
-        std::string move = body.at("move").as_string().c_str();
-
-        if (move != "L" && move != "R" && move != "U" && move != "D" && move != "") {
-            sendBadRequest(req, send, "Failed to parse action");
-            return;
-        }
-
-        const model::Map* map = game_.FindMap(player->GetMapId());
-        double s = map->GetDogSpeed();
-
-        if (move == "L") {
-            player->SetSpeed({-s, 0});
-            player->SetDirection(model::Direction::WEST);
-        }
-        else if (move == "R") {
-            player->SetSpeed({s, 0});
-            player->SetDirection(model::Direction::EAST);
-        }
-        else if (move == "U") {
-            player->SetSpeed({0, -s});
-            player->SetDirection(model::Direction::NORTH);
-        }
-        else if (move == "D") {
-            player->SetSpeed({0, s});
-            player->SetDirection(model::Direction::SOUTH);
-        }
-        else {
-            player->SetSpeed({0, 0});
-        }
-
-        http::response<http::string_body> res{http::status::ok, req.version()};
-        res.set(http::field::content_type, "application/json");
-        res.set(http::field::cache_control, "no-cache");
-
-        res.body() = "{}";
-        res.prepare_payload();
-        send(std::move(res));
+        action(player);
     }
 
-private:
     template <typename Send>
     void sendBadRequest(const http::request<http::string_body>& req, Send&& send, const std::string& message) {
         sendError(req, send, http::status::bad_request, "invalidArgument", message);
