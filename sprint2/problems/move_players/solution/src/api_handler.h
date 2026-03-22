@@ -251,19 +251,19 @@ public:
 
         if (move == "L") {
             player->SetSpeed({-s, 0});
-            player->SetDirection(Direction::WEST);
+            player->SetDirection(model::Direction::WEST);
         }
         else if (move == "R") {
             player->SetSpeed({s, 0});
-            player->SetDirection(Direction::EAST);
+            player->SetDirection(model::Direction::EAST);
         }
         else if (move == "U") {
             player->SetSpeed({0, -s});
-            player->SetDirection(Direction::NORTH);
+            player->SetDirection(model::Direction::NORTH);
         }
         else if (move == "D") {
             player->SetSpeed({0, s});
-            player->SetDirection(Direction::SOUTH);
+            player->SetDirection(model::Direction::SOUTH);
         }
         else {
             player->SetSpeed({0, 0});
