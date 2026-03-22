@@ -189,11 +189,8 @@ template <typename Send>
     }
 
     template <typename Body, typename Allocator, typename Send>
-    void HandleTick(boost::beast::http::request<Body, boost::beast::http::basic_fields<Allocator>>& req, Send&& send) {
-        using namespace boost::beast::http;
-        using namespace boost::json;
-
-        if (req.method() != verb::post) {
+    void HandleTick(http::request<Body, http::basic_fields<Allocator>>& req, Send&& send) {
+        if (req.method() != http::verb::post) {
             sendMethodNotAllowed(req, send, "POST");
             return;
         }
@@ -203,37 +200,38 @@ template <typename Send>
             return;
         }
 
-        value body;
+        json::value body;
         try {
-            body = parse(req.body());
+            body = json::parse(req.body());
         } catch (...) {
-            sendBadRequest(req, send, "Failed to parse tick request JSON");
+            sendBadRequest(req, send, "invalidArgument", "Failed to parse tick request JSON");
             return;
         }
 
         if (!body.is_object() || !body.as_object().contains("timeDelta")) {
-            sendBadRequest(req, send, "Failed to parse tick request JSON");
+            sendBadRequest(req, send, "invalidArgument", "Missing timeDelta");
             return;
         }
 
-        int64_t timeDeltaMs = 0;
+        int64_t timeDeltaMs;
         try {
-            timeDeltaMs = body.as_object()["timeDelta"].as_int64();
-            if (timeDeltaMs < 0) throw std::runtime_error("Negative delta");
+            timeDeltaMs = body.as_object().at("timeDelta").as_int64();
         } catch (...) {
-            sendBadRequest(req, send, "Failed to parse tick request JSON");
+            sendBadRequest(req, send, "invalidArgument", "Invalid timeDelta");
             return;
         }
 
-        double dt = static_cast<double>(timeDeltaMs) / 1000.0; // миллисекунды → секунды
+        double deltaSeconds = static_cast<double>(timeDeltaMs) / 1000.0;
 
-        for (auto& player : players_.GetPlayersByMap(/* карта игрока */)) {
-            MovePlayerAlongRoad(player, dt);
+        for (const auto& map : game_.GetMaps()) {
+            for (auto* player : players_.GetPlayersByMap(*map.GetId())) {
+                MovePlayerAlongRoad(player, deltaSeconds);
+            }
         }
 
-        response<string_body> res{status::ok, req.version()};
-        res.set(field::content_type, "application/json");
-        res.set(field::cache_control, "no-cache");
+        http::response<http::string_body> res{http::status::ok, req.version()};
+        res.set(http::field::content_type, "application/json");
+        res.set(http::field::cache_control, "no-cache");
         res.body() = "{}";
         res.prepare_payload();
         send(std::move(res));
