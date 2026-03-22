@@ -117,27 +117,67 @@ template <typename Send>
 
     template <typename Body, typename Allocator, typename Send>
     void HandleAction(http::request<Body, http::basic_fields<Allocator>>& req, Send&& send) {
-        ExecuteAuthorized(req, send, [&](model::Player* player) {
+        if (req.method() != http::verb::post) {
+            sendMethodNotAllowed(req, send, "POST");
+            return;
+        }
+
+        if (req[http::field::content_type] != "application/json") {
+            sendBadRequest(req, send, "Invalid content type");
+            return;
+        }
+
+        auto ExecuteAuthorized = [&](auto&& action) {
+        auto it = req.find(http::field::authorization);
+        if (it == req.end()) {
+            sendUnauthorized(req, send, "invalidToken", "Authorization header is required");
+            return;
+        }
+
+        std::string auth = std::string(it->value());
+        if (!auth.starts_with("Bearer ")) {
+            sendUnauthorized(req, send, "invalidToken", "Authorization header is invalid");
+            return;
+        }
+
+        std::string token = auth.substr(7);
+        auto player = players_.FindByToken(token);
+        if (!player) {
+            sendUnauthorized(req, send, "unknownToken", "Player token has not been found");
+            return;
+        }
+
+        action(player);
+        };
+
+        ExecuteAuthorized([&](model::Player* player) {
             json::value body;
-            try { body = json::parse(req.body()); }
-            catch (...) { sendBadRequest(req, send, "Failed to parse action"); return; }
+            try {
+                body = json::parse(req.body());
+            } catch (...) {
+                sendBadRequest(req, send, "Failed to parse action");
+                return;
+            }
 
             if (!body.as_object().contains("move")) {
-                sendBadRequest(req, send, "Failed to parse action"); return;
+                sendBadRequest(req, send, "Failed to parse action");
+                return;
             }
 
             std::string move = body.at("move").as_string().c_str();
             if (move != "L" && move != "R" && move != "U" && move != "D" && move != "") {
-                sendBadRequest(req, send, "Failed to parse action"); return;
+                sendBadRequest(req, send, "Failed to parse action");
+                return;
             }
 
-            double s = GetMapSpeed(player->GetMapId());
+            const model::Map* map = game_.FindMap(player->GetMapId());
+            double s = map->GetDogSpeed();
 
-            if (move == "L")      player->SetSpeed({-s, 0}), player->SetDirection(model::Direction::WEST);
-            else if (move == "R") player->SetSpeed({s, 0}),  player->SetDirection(model::Direction::EAST);
+            if (move == "L") player->SetSpeed({-s, 0}), player->SetDirection(model::Direction::WEST);
+            else if (move == "R") player->SetSpeed({s, 0}), player->SetDirection(model::Direction::EAST);
             else if (move == "U") player->SetSpeed({0, -s}), player->SetDirection(model::Direction::NORTH);
-            else if (move == "D") player->SetSpeed({0, s}),  player->SetDirection(model::Direction::SOUTH);
-            else                  player->SetSpeed({0, 0});
+            else if (move == "D") player->SetSpeed({0, s}), player->SetDirection(model::Direction::SOUTH);
+            else player->SetSpeed({0, 0});
 
             http::response<http::string_body> res{http::status::ok, req.version()};
             res.set(http::field::content_type, "application/json");
