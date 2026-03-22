@@ -280,7 +280,25 @@ public:
 
             send(std::move(response));
             return;
-       }    else {
+            }  
+            if (target.starts_with(API_PREFIX)) {
+                json::object body{
+                    {"code", "badRequest"},
+                    {"message", "Bad request"}
+                };
+
+                http::response<http::string_body> response{
+                http::status::bad_request, req.version()};
+
+                response.set(http::field::content_type, "application/json");
+                response.set(http::field::cache_control, "no-cache");
+                response.body() = json::serialize(body);
+                response.prepare_payload();
+
+                send(std::move(response));
+                return;
+            }  
+             else {
                 auto decoded_target = UrlDecode(target);
 
                 fs::path file_path;
