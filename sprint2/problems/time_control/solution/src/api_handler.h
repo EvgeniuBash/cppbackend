@@ -204,30 +204,35 @@ template <typename Send>
         try {
             body = json::parse(req.body());
         } catch (...) {
-            sendBadRequest(req, send, "invalidArgument", "Failed to parse tick request JSON");
+            sendBadRequest(req, send, "Failed to parse tick request JSON");
             return;
         }
 
-        if (!body.is_object() || !body.as_object().contains("timeDelta")) {
-            sendBadRequest(req, send, "invalidArgument", "Missing timeDelta");
+        if (!body.is_object()) {
+            sendBadRequest(req, send, "Tick request body must be a JSON object");
             return;
         }
 
-        int64_t timeDeltaMs;
-        try {
-            timeDeltaMs = body.as_object().at("timeDelta").as_int64();
-        } catch (...) {
-            sendBadRequest(req, send, "invalidArgument", "Invalid timeDelta");
+        auto& obj = body.as_object();
+        if (!obj.contains("timeDelta") || !obj.at("timeDelta").is_int64()) {
+            sendBadRequest(req, send, "Missing or invalid timeDelta");
             return;
         }
 
-        double deltaSeconds = static_cast<double>(timeDeltaMs) / 1000.0;
+        int64_t deltaMs = obj.at("timeDelta").as_int64();
+        if (deltaMs < 0) {
+            sendBadRequest(req, send, "Invalid timeDelta: must be non-negative");
+            return;
+        }
+
+        double deltaSeconds = static_cast<double>(deltaMs) / 1000.0;
 
         for (const auto& map : game_.GetMaps()) {
-            for (auto* player : players_.GetPlayersByMap(*map.GetId())) {
+            auto playersInMap = players_.GetPlayersByMap(map.GetId());
+            for (auto* player : playersInMap) {
                 MovePlayerAlongRoad(player, deltaSeconds);
             }
-        }
+        }      
 
         http::response<http::string_body> res{http::status::ok, req.version()};
         res.set(http::field::content_type, "application/json");
