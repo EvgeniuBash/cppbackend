@@ -256,9 +256,12 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
 
     auto pos = player->GetPosition();
     auto speed = player->GetSpeed();
+    auto dir = player->GetDirection();
 
     double new_x = pos.x + speed.vx * dt;
     double new_y = pos.y + speed.vy * dt;
+
+    // --- 1. ПЫТАЕМСЯ ДВИГАТЬСЯ ---
 
     if (speed.vx != 0) {
         for (const auto& road : map->GetRoads()) {
@@ -268,8 +271,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double left  = std::min(road.GetStart().x, road.GetEnd().x);
             double right = std::max(road.GetStart().x, road.GetEnd().x);
 
-            if  (std::abs(pos.y - yc) <= 0.4) {
-
+            if (std::abs(pos.y - yc) <= 0.4) {
                 double x_min = left  - 0.4;
                 double x_max = right + 0.4;
 
@@ -282,15 +284,15 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                 }
 
                 double y_offset =
-                    (player->GetDirection() == model::Direction::NORTH) ? -0.4 : 0.4;
+                    (dir == model::Direction::UP) ? -0.4 : 0.4;
+
                 player->SetPosition({new_x, yc + y_offset});
                 player->SetSpeed(speed);
-                return;
+                break;
             }
         }
     }
-
-    if (speed.vy != 0) {
+    else if (speed.vy != 0) {
         for (const auto& road : map->GetRoads()) {
             if (!road.IsVertical()) continue;
 
@@ -298,8 +300,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double top    = std::min(road.GetStart().y, road.GetEnd().y);
             double bottom = std::max(road.GetStart().y, road.GetEnd().y);
 
-            if  (std::abs(pos.x - xc) <= 0.4) {
-
+            if (std::abs(pos.x - xc) <= 0.4) {
                 double y_min = top    - 0.4;
                 double y_max = bottom + 0.4;
 
@@ -310,15 +311,57 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                     new_y = y_max;
                     speed.vy = 0;
                 }
+
                 double x_offset =
-                    (player->GetDirection() == model::Direction::WEST) ? -0.4 : 0.4;
+                    (dir == model::Direction::LEFT) ? -0.4 : 0.4;
+
                 player->SetPosition({xc + x_offset, new_y});
                 player->SetSpeed(speed);
+                break;
+            }
+        }
+    }
+
+    // --- 2. ВСЕГДА ВЫРАВНИВАЕМ ПО НАПРАВЛЕНИЮ ---
+
+    pos = player->GetPosition();  // обновлённая позиция
+
+    for (const auto& road : map->GetRoads()) {
+
+        if (road.IsHorizontal()) {
+            double yc = road.GetStart().y;
+            double left  = std::min(road.GetStart().x, road.GetEnd().x);
+            double right = std::max(road.GetStart().x, road.GetEnd().x);
+
+            if (pos.x >= left - 0.4 && pos.x <= right + 0.4 &&
+                std::abs(pos.y - yc) <= 0.4) {
+
+                double y_offset =
+                    (dir == model::Direction::UP) ? -0.4 : 0.4;
+
+                player->SetPosition({pos.x, yc + y_offset});
+                return;
+            }
+        }
+
+        if (road.IsVertical()) {
+            double xc = road.GetStart().x;
+            double top    = std::min(road.GetStart().y, road.GetEnd().y);
+            double bottom = std::max(road.GetStart().y, road.GetEnd().y);
+
+            if (pos.y >= top - 0.4 && pos.y <= bottom + 0.4 &&
+                std::abs(pos.x - xc) <= 0.4) {
+
+                double x_offset =
+                    (dir == model::Direction::LEFT) ? -0.4 : 0.4;
+
+                player->SetPosition({xc + x_offset, pos.y});
                 return;
             }
         }
     }
 
+    // --- 3. ЕСЛИ ВООБЩЕ НЕ НА ДОРОГЕ ---
     player->SetSpeed({0, 0});
 }
     
