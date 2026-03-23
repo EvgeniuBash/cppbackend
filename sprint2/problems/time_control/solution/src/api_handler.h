@@ -204,41 +204,43 @@ template <typename Send>
         try {
             body = json::parse(req.body());
         } catch (...) {
-            sendBadRequest(req, send, "Failed to parse tick request JSON");
+            sendInvalidArgument(req, send, "Failed to parse tick request JSON");
             return;
         }
 
         if (!body.is_object()) {
-            sendBadRequest(req, send, "Tick request body must be a JSON object");
+            sendInvalidArgument(req, send, "Failed to parse tick request JSON");
             return;
         }
 
         auto& obj = body.as_object();
+
         if (!obj.contains("timeDelta") || !obj.at("timeDelta").is_int64()) {
-            sendBadRequest(req, send, "Missing or invalid timeDelta");
+            sendInvalidArgument(req, send, "Invalid timeDelta");
             return;
         }
 
-        int64_t deltaMs = obj.at("timeDelta").as_int64();
-        if (deltaMs < 0) {
-            sendBadRequest(req, send, "Invalid timeDelta: must be non-negative");
+        int64_t delta_ms = obj.at("timeDelta").as_int64();
+        if (delta_ms < 0) {
+            sendInvalidArgument(req, send, "Invalid timeDelta");
             return;
         }
 
-        double deltaSeconds = static_cast<double>(deltaMs) / 1000.0;
+        double dt = static_cast<double>(delta_ms) / 1000.0;
 
         for (const auto& map : game_.GetMaps()) {
-            auto playersInMap = players_.GetPlayersByMap(map.GetId());
-            for (auto* player : playersInMap) {
-                MovePlayerAlongRoad(player, deltaSeconds);
+            auto players = players_.GetPlayersByMap(map.GetId());
+            for (auto* player : players) {
+                MovePlayerAlongRoad(player, dt);
             }
-        }      
+        }
 
         http::response<http::string_body> res{http::status::ok, req.version()};
         res.set(http::field::content_type, "application/json");
         res.set(http::field::cache_control, "no-cache");
         res.body() = "{}";
         res.prepare_payload();
+
         send(std::move(res));
     }
 
@@ -362,6 +364,23 @@ private:
         };
         res.body() = json::serialize(body);
         res.prepare_payload();
+        send(std::move(res));
+    }
+
+    template <typename Send>
+    void sendInvalidArgument(const http::request<http::string_body>& req,
+                         Send&& send,
+                         const std::string& message) {
+        json::object obj;
+        obj["code"] = "invalidArgument";
+        obj["message"] = message;
+
+        http::response<http::string_body> res{http::status::bad_request, req.version()};
+        res.set(http::field::content_type, "application/json");
+        res.set(http::field::cache_control, "no-cache");
+        res.body() = json::serialize(obj);
+        res.prepare_payload();
+
         send(std::move(res));
     }
 
