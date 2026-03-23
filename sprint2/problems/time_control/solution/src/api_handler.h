@@ -88,32 +88,41 @@ template <typename Send>
         });
     }
 
-    template <typename Body, typename Allocator, typename Send>
-    void HandleState(http::request<Body, http::basic_fields<Allocator>>& req, Send&& send) {
-        ExecuteAuthorized(req, send, [&](model::Player* player) {
-            json::object players_json;
-
-            for (auto* p : players_.GetPlayersByMap(player->GetMapId())) {
-                json::object obj;
-                obj["pos"] = {p->GetPosition().x, p->GetPosition().y};
-                obj["speed"] = {p->GetSpeed().vx, p->GetSpeed().vy};
-                obj["dir"] = "U";  
-                players_json[std::to_string(p->GetId())] = obj;
-            }
-
-            json::object result;
-            result["players"] = players_json;
-
-            http::response<http::string_body> res{http::status::ok, req.version()};
-            res.set(http::field::content_type, "application/json");
-            res.set(http::field::cache_control, "no-cache");
-            if (req.method() != http::verb::head) {
-                res.body() = json::serialize(result);
-            }
-            res.prepare_payload();
-            send(std::move(res));
-        });
+template <typename Body, typename Allocator, typename Send>
+void HandleState(http::request<Body, http::basic_fields<Allocator>>& req, Send&& send) {
+    if (req.method() != http::verb::get && req.method() != http::verb::head) {
+        sendMethodNotAllowed(req, send, "GET, HEAD");
+        return;
     }
+
+    ExecuteAuthorized(req, send, [&](model::Player* player) {
+        json::object players_json;
+
+        for (auto* p : players_.GetPlayersByMap(player->GetMapId())) {
+            json::object obj;
+
+            obj["pos"] = json::array({p->GetPosition().x, p->GetPosition().y});
+            obj["speed"] = json::array({p->GetSpeed().vx, p->GetSpeed().vy});
+            obj["dir"] = DirToString(p->GetDirection());
+
+            players_json[std::to_string(p->GetId())] = obj;
+        }
+
+        json::object result;
+        result["players"] = players_json;
+
+        http::response<http::string_body> res{http::status::ok, req.version()};
+        res.set(http::field::content_type, "application/json");
+        res.set(http::field::cache_control, "no-cache");
+
+        if (req.method() != http::verb::head) {
+            res.body() = json::serialize(result);
+        }
+
+        res.prepare_payload();
+        send(std::move(res));
+    });
+}
 
     template <typename Body, typename Allocator, typename Send>
     void HandleAction(http::request<Body, http::basic_fields<Allocator>>& req, Send&& send) {
@@ -190,7 +199,7 @@ template <typename Send>
         }
 
         if (req[http::field::content_type] != "application/json") {
-            sendBadRequest(req, send, "Invalid content type");
+            sendInvalidArgument(req, send, "Invalid content type");
             return;
         }
 
@@ -239,43 +248,62 @@ template <typename Send>
     }
 
 private:
-    void MovePlayerAlongRoad(model::Player* player, double dt) {
-        const model::Map* map = game_.FindMap(player->GetMapId());
-        if (!map) return;
+void MovePlayerAlongRoad(model::Player* player, double dt) {
+    const model::Map* map = game_.FindMap(player->GetMapId());
+    if (!map) return;
 
-        auto pos = player->GetPosition();
-        auto speed = player->GetSpeed();
+    auto pos = player->GetPosition();
+    auto speed = player->GetSpeed();
 
-        double new_x = pos.x + speed.vx * dt;
-        double new_y = pos.y + speed.vy * dt;
+    double new_x = pos.x + speed.vx * dt;
+    double new_y = pos.y + speed.vy * dt;
 
-        for (const auto& road : map->GetRoads()) {
-            if (road.IsHorizontal()) {
-                if (std::abs(pos.y - road.GetStart().y) <= 0.4) {
-                    double left = std::min(road.GetStart().x, road.GetEnd().x);
-                    double right = std::max(road.GetStart().x, road.GetEnd().x);
+    for (const auto& road : map->GetRoads()) {
+        if (road.IsHorizontal()) {
+            double y = road.GetStart().y;
+            double left = std::min(road.GetStart().x, road.GetEnd().x);
+            double right = std::max(road.GetStart().x, road.GetEnd().x);
 
-                    if (new_x < left) { new_x = left; player->SetSpeed({0,0}); }
-                    if (new_x > right) { new_x = right; player->SetSpeed({0,0}); }
+            if (std::abs(pos.y - y) <= 0.4 &&
+                pos.x >= left - 0.4 && pos.x <= right + 0.4) {
 
-                    player->SetPosition({new_x, pos.y});
-                    return;
+                if (new_x < left) {
+                    new_x = left;
+                    player->SetSpeed({0, 0});
                 }
-            } else {
-                if (std::abs(pos.x - road.GetStart().x) <= 0.4) {
-                    double top = std::min(road.GetStart().y, road.GetEnd().y);
-                    double bottom = std::max(road.GetStart().y, road.GetEnd().y);
-
-                    if (new_y < top) { new_y = top; player->SetSpeed({0,0}); }
-                    if (new_y > bottom) { new_y = bottom; player->SetSpeed({0,0}); }
-
-                    player->SetPosition({pos.x, new_y});
-                    return;
+                if (new_x > right) {
+                    new_x = right;
+                    player->SetSpeed({0, 0});
                 }
+
+                player->SetPosition({new_x, y});
+                return;
+            }
+        } else {
+            double x = road.GetStart().x;
+            double top = std::min(road.GetStart().y, road.GetEnd().y);
+            double bottom = std::max(road.GetStart().y, road.GetEnd().y);
+
+            if (std::abs(pos.x - x) <= 0.4 &&
+                pos.y >= top - 0.4 && pos.y <= bottom + 0.4) {
+
+                if (new_y < top) {
+                    new_y = top;
+                    player->SetSpeed({0, 0});
+                }
+                if (new_y > bottom) {
+                    new_y = bottom;
+                    player->SetSpeed({0, 0});
+                }
+
+                player->SetPosition({x, new_y});
+                return;
             }
         }
-        player->SetSpeed({0,0});
     }
+
+    player->SetSpeed({0, 0});
+}
     
     template <typename Body, typename Allocator, typename Send, typename Fn>
     void ExecuteAuthorized(const http::request<Body, http::basic_fields<Allocator>>& req, Send&& send, Fn&& action) {
