@@ -97,7 +97,7 @@ template <typename Send>
                 json::object obj;
                 obj["pos"] = {p->GetPosition().x, p->GetPosition().y};
                 obj["speed"] = {p->GetSpeed().vx, p->GetSpeed().vy};
-                obj["dir"] = "U";  // направление по умолчанию
+                obj["dir"] = "U";  
                 players_json[std::to_string(p->GetId())] = obj;
             }
 
@@ -127,30 +127,7 @@ template <typename Send>
             return;
         }
 
-        auto ExecuteAuthorized = [&](auto&& action) {
-        auto it = req.find(http::field::authorization);
-        if (it == req.end()) {
-            sendUnauthorized(req, send, "invalidToken", "Authorization header is required");
-            return;
-        }
-
-        std::string auth = std::string(it->value());
-        if (!auth.starts_with("Bearer ")) {
-            sendUnauthorized(req, send, "invalidToken", "Authorization header is invalid");
-            return;
-        }
-
-        std::string token = auth.substr(7);
-        auto player = players_.FindByToken(token);
-        if (!player) {
-            sendUnauthorized(req, send, "unknownToken", "Player token has not been found");
-            return;
-        }
-
-        action(player);
-        };
-
-        ExecuteAuthorized([&](model::Player* player) {
+        ExecuteAuthorized(req, send, [&](model::Player* player) {
             json::value body;
             try {
                 body = json::parse(req.body());
@@ -159,31 +136,48 @@ template <typename Send>
                 return;
             }
 
-            if (!body.as_object().contains("move")) {
+            if (!body.is_object() || !body.as_object().contains("move")) {
                 sendBadRequest(req, send, "Failed to parse action");
                 return;
             }
 
             std::string move = body.at("move").as_string().c_str();
+
             if (move != "L" && move != "R" && move != "U" && move != "D" && move != "") {
                 sendBadRequest(req, send, "Failed to parse action");
                 return;
             }
 
             const model::Map* map = game_.FindMap(player->GetMapId());
+            if (!map) {
+                sendBadRequest(req, send, "Map not found");
+                return;
+            }
+
             double s = map->GetDogSpeed();
 
-            if (move == "L") player->SetSpeed({-s, 0}), player->SetDirection(model::Direction::WEST);
-            else if (move == "R") player->SetSpeed({s, 0}), player->SetDirection(model::Direction::EAST);
-            else if (move == "U") player->SetSpeed({0, -s}), player->SetDirection(model::Direction::NORTH);
-            else if (move == "D") player->SetSpeed({0, s}), player->SetDirection(model::Direction::SOUTH);
-            else player->SetSpeed({0, 0});
+            if (move == "L") {
+                player->SetSpeed({-s, 0});
+                player->SetDirection(model::Direction::WEST);
+            } else if (move == "R") {
+                player->SetSpeed({s, 0});
+                player->SetDirection(model::Direction::EAST);
+            } else if (move == "U") {
+                player->SetSpeed({0, -s});
+                player->SetDirection(model::Direction::NORTH);
+            } else if (move == "D") {
+                player->SetSpeed({0, s});
+                player->SetDirection(model::Direction::SOUTH);
+            } else {
+                player->SetSpeed({0, 0});
+            }
 
             http::response<http::string_body> res{http::status::ok, req.version()};
             res.set(http::field::content_type, "application/json");
             res.set(http::field::cache_control, "no-cache");
             res.body() = "{}";
             res.prepare_payload();
+
             send(std::move(res));
         });
     }
