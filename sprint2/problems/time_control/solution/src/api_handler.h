@@ -249,61 +249,80 @@ void HandleState(http::request<Body, http::basic_fields<Allocator>>& req, Send&&
 
 private:
 void MovePlayerAlongRoad(model::Player* player, double dt) {
-    const model::Map* map = game_.FindMap(player->GetMapId());
-    if (!map) return;
+    if (dt <= 0) return;
+
     auto pos = player->GetPosition();
     auto speed = player->GetSpeed();
-    double new_x = pos.x + speed.vx * dt;
-    double new_y = pos.y + speed.vy * dt;
-    bool found_road = false;
-    
+
+    if (speed.vx == 0 && speed.vy == 0) return;
+
+    double nx = pos.x + speed.vx * dt;
+    double ny = pos.y + speed.vy * dt;
+
+    const model::Map* map = game_.FindMap(player->GetMapId());
+    if (!map) return;
+
+    bool found = false;
+
     for (const auto& road : map->GetRoads()) {
         if (road.IsHorizontal()) {
-            double y = road.GetStart().y;
-            double left = std::min(road.GetStart().x, road.GetEnd().x);
+            double yc = road.GetStart().y; 
+            double left  = std::min(road.GetStart().x, road.GetEnd().x);
             double right = std::max(road.GetStart().x, road.GetEnd().x);
-            if (std::abs(pos.y - y) <= 0.4 &&
-                pos.x >= left - 0.4 && pos.x <= right + 0.4) {
-                
-                if (new_x < left) {
-                    new_x = left;
-                    player->SetSpeed({0, 0});
-                } else if (new_x > right) {
-                    new_x = right;
-                    player->SetSpeed({0, 0});
-                } else {
-                    player->SetSpeed(speed);
+
+            double x_min = left  - 0.4;
+            double x_max = right + 0.4;
+
+            if (std::abs(pos.y - yc) <= 0.4001 &&
+                pos.x >= x_min - 0.01 && pos.x <= x_max + 0.01) {
+
+                if (nx < x_min) {
+                    nx = x_min;
+                    speed.vx = 0.0;
+                } else if (nx > x_max) {
+                    nx = x_max;
+                    speed.vx = 0.0;
                 }
-                
-                player->SetPosition({new_x, y});
-                found_road = true;
+
+                ny = yc;
+
+                player->SetPosition({nx, ny});
+                player->SetSpeed(speed);
+                found = true;
                 break;
             }
-        } else { 
-            double x = road.GetStart().x;
-            double top = std::min(road.GetStart().y, road.GetEnd().y);
+        }
+        else { 
+            double xc = road.GetStart().x; 
+            double top    = std::min(road.GetStart().y, road.GetEnd().y);
             double bottom = std::max(road.GetStart().y, road.GetEnd().y);
-            if (std::abs(pos.x - x) <= 0.4 &&
-                pos.y >= top - 0.4 && pos.y <= bottom + 0.4) {
-                
-                if (new_y < top) {
-                    new_y = top;
-                    player->SetSpeed({0, 0});
-                } else if (new_y > bottom) {
-                    new_y = bottom;
-                    player->SetSpeed({0, 0});
-                } else {
-                    player->SetSpeed(speed);
+
+            double y_min = top    - 0.4;
+            double y_max = bottom + 0.4;
+
+            if (std::abs(pos.x - xc) <= 0.4001 &&
+                pos.y >= y_min - 0.01 && pos.y <= y_max + 0.01) {
+
+                if (ny < y_min) {
+                    ny = y_min;
+                    speed.vy = 0.0;
+                } else if (ny > y_max) {
+                    ny = y_max;
+                    speed.vy = 0.0;
                 }
-                
-                player->SetPosition({x, new_y});
-                found_road = true;
+
+                nx = xc;
+
+                player->SetPosition({nx, ny});
+                player->SetSpeed(speed);
+                found = true;
                 break;
             }
         }
     }
-    if (!found_road) {
-        player->SetSpeed({0, 0});
+
+    if (!found) {
+        player->SetSpeed({0.0, 0.0});
     }
 }
     

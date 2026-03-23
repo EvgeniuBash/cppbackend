@@ -226,6 +226,7 @@ public:
                 http::status::ok, req.version()};
 
             response.set(http::field::content_type, "application/json");
+            response.set(http::field::cache_control, "no-cache");
             response.body() = json::serialize(maps_array);
             response.prepare_payload();
 
@@ -250,6 +251,7 @@ public:
                     http::status::not_found, req.version()};
 
                 response.set(http::field::content_type, "application/json");
+                response.set(http::field::cache_control, "no-cache");
                 response.body() = json::serialize(error);
                 response.prepare_payload();
 
@@ -281,6 +283,7 @@ public:
                 http::status::ok, req.version()};
 
             response.set(http::field::content_type, "application/json");
+            response.set(http::field::cache_control, "no-cache");
             response.body() = json::serialize(result);
             response.prepare_payload();
 
