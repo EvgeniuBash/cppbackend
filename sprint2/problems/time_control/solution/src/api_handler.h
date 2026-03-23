@@ -273,33 +273,34 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double x_min = left  - 0.4;
             double x_max = right + 0.4;
 
-            if (std::abs(pos.y - yc) <= 0.4001 &&
+            double dist_y = std::abs(pos.y - yc);
+            if (dist_y <= 0.4001 &&
                 pos.x >= x_min - 0.0001 && pos.x <= x_max + 0.0001) {
 
-                bool hit_border = false;
+                // Если уже на границе и толкаемся в неё — обнуляем сразу
+                if ((speed.vx < 0 && std::abs(pos.x - x_min) < 1e-9) ||
+                    (speed.vx > 0 && std::abs(pos.x - x_max) < 1e-9)) {
+                    speed.vx = 0.0;
+                }
 
+                // Ограничиваем координаты
                 if (nx < x_min) {
                     nx = x_min;
                     speed.vx = 0.0;
-                    hit_border = true;
                 } else if (nx > x_max) {
                     nx = x_max;
                     speed.vx = 0.0;
-                    hit_border = true;
                 }
 
+                // Примагничиваем к верхней границе полосы
                 ny = yc + 0.4;
 
                 player->SetPosition({nx, ny});
                 player->SetSpeed(speed);
-
                 found = true;
-
-                if (hit_border) {
-                    break;
-                }
+                break;
             }
-        } else {  
+        } else {  // вертикальная
             double xc = road.GetStart().x;
             double top    = std::min(road.GetStart().y, road.GetEnd().y);
             double bottom = std::max(road.GetStart().y, road.GetEnd().y);
@@ -307,31 +308,30 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double y_min = top    - 0.4;
             double y_max = bottom + 0.4;
 
-            if (std::abs(pos.x - xc) <= 0.4001 &&
+            double dist_x = std::abs(pos.x - xc);
+            if (dist_x <= 0.4001 &&
                 pos.y >= y_min - 0.0001 && pos.y <= y_max + 0.0001) {
 
-                bool hit_border = false;
+                // Если уже на границе и толкаемся в неё — обнуляем сразу
+                if ((speed.vy < 0 && std::abs(pos.y - y_min) < 1e-9) ||
+                    (speed.vy > 0 && std::abs(pos.y - y_max) < 1e-9)) {
+                    speed.vy = 0.0;
+                }
 
                 if (ny < y_min) {
                     ny = y_min;
                     speed.vy = 0.0;
-                    hit_border = true;
                 } else if (ny > y_max) {
                     ny = y_max;
                     speed.vy = 0.0;
-                    hit_border = true;
                 }
 
                 nx = xc + 0.4;
 
                 player->SetPosition({nx, ny});
                 player->SetSpeed(speed);
-
                 found = true;
-
-                if (hit_border) {
-                    break;
-                }
+                break;
             }
         }
     }
