@@ -251,58 +251,60 @@ private:
 void MovePlayerAlongRoad(model::Player* player, double dt) {
     const model::Map* map = game_.FindMap(player->GetMapId());
     if (!map) return;
-
     auto pos = player->GetPosition();
     auto speed = player->GetSpeed();
-
     double new_x = pos.x + speed.vx * dt;
     double new_y = pos.y + speed.vy * dt;
-
+    bool found_road = false;
+    
     for (const auto& road : map->GetRoads()) {
         if (road.IsHorizontal()) {
             double y = road.GetStart().y;
             double left = std::min(road.GetStart().x, road.GetEnd().x);
             double right = std::max(road.GetStart().x, road.GetEnd().x);
-
             if (std::abs(pos.y - y) <= 0.4 &&
                 pos.x >= left - 0.4 && pos.x <= right + 0.4) {
-
+                
                 if (new_x < left) {
                     new_x = left;
                     player->SetSpeed({0, 0});
-                }
-                if (new_x > right) {
+                } else if (new_x > right) {
                     new_x = right;
                     player->SetSpeed({0, 0});
+                } else {
+                    player->SetSpeed(speed);
                 }
-
+                
                 player->SetPosition({new_x, y});
-                return;
+                found_road = true;
+                break;
             }
-        } else {
+        } else { 
             double x = road.GetStart().x;
             double top = std::min(road.GetStart().y, road.GetEnd().y);
             double bottom = std::max(road.GetStart().y, road.GetEnd().y);
-
             if (std::abs(pos.x - x) <= 0.4 &&
                 pos.y >= top - 0.4 && pos.y <= bottom + 0.4) {
-
+                
                 if (new_y < top) {
                     new_y = top;
                     player->SetSpeed({0, 0});
-                }
-                if (new_y > bottom) {
+                } else if (new_y > bottom) {
                     new_y = bottom;
                     player->SetSpeed({0, 0});
+                } else {
+                    player->SetSpeed(speed);
                 }
-
+                
                 player->SetPosition({x, new_y});
-                return;
+                found_road = true;
+                break;
             }
         }
     }
-
-    player->SetSpeed({0, 0});
+    if (!found_road) {
+        player->SetSpeed({0, 0});
+    }
 }
     
     template <typename Body, typename Allocator, typename Send, typename Fn>
