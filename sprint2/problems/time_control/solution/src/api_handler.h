@@ -257,69 +257,62 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
     auto pos = player->GetPosition();
     auto speed = player->GetSpeed();
 
-    // Если стоим — ничего не делаем
-    if (speed.vx == 0.0 && speed.vy == 0.0) return;
-
     double new_x = pos.x + speed.vx * dt;
     double new_y = pos.y + speed.vy * dt;
 
-    bool on_road = false;
-
     for (const auto& road : map->GetRoads()) {
+
         if (road.IsHorizontal()) {
-            double y = road.GetStart().y;
+            double yc = road.GetStart().y;
             double left  = std::min(road.GetStart().x, road.GetEnd().x);
             double right = std::max(road.GetStart().x, road.GetEnd().x);
 
-            // Проверяем, что игрок "находится" на дороге
-            if (std::abs(pos.y - y) <= 0.4 &&
-                pos.x >= left && pos.x <= right) {
+            // расширенные границы
+            double x_min = left  - 0.4;
+            double x_max = right + 0.4;
 
-                // Движение только по X
-                if (new_x < left) {
-                    new_x = left;
-                    speed.vx = 0.0;
-                } else if (new_x > right) {
-                    new_x = right;
-                    speed.vx = 0.0;
+            if (std::abs(pos.y - (yc + 0.4)) < 1e-6) {
+
+                if (new_x < x_min) {
+                    new_x = x_min;
+                    speed.vx = 0;
+                } else if (new_x > x_max) {
+                    new_x = x_max;
+                    speed.vx = 0;
                 }
 
-                player->SetPosition({new_x, y});
+                player->SetPosition({new_x, yc + 0.4});
                 player->SetSpeed(speed);
-
-                on_road = true;
-                break;
+                return;
             }
-        } else { // вертикальная дорога
-            double x = road.GetStart().x;
+        }
+        else { // вертикальная
+            double xc = road.GetStart().x;
             double top    = std::min(road.GetStart().y, road.GetEnd().y);
             double bottom = std::max(road.GetStart().y, road.GetEnd().y);
 
-            if (std::abs(pos.x - x) <= 0.4 &&
-                pos.y >= top && pos.y <= bottom) {
+            double y_min = top    - 0.4;
+            double y_max = bottom + 0.4;
 
-                // Движение только по Y
-                if (new_y < top) {
-                    new_y = top;
-                    speed.vy = 0.0;
-                } else if (new_y > bottom) {
-                    new_y = bottom;
-                    speed.vy = 0.0;
+            if (std::abs(pos.x - (xc + 0.4)) < 1e-6) {
+
+                if (new_y < y_min) {
+                    new_y = y_min;
+                    speed.vy = 0;
+                } else if (new_y > y_max) {
+                    new_y = y_max;
+                    speed.vy = 0;
                 }
 
-                player->SetPosition({x, new_y});
+                player->SetPosition({xc + 0.4, new_y});
                 player->SetSpeed(speed);
-
-                on_road = true;
-                break;
+                return;
             }
         }
     }
 
-    // Если ни одной дороги не нашли — игрок "вылетел" → останавливаем
-    if (!on_road) {
-        player->SetSpeed({0.0, 0.0});
-    }
+    // если вдруг не нашли дорогу
+    player->SetSpeed({0, 0});
 }
     
     template <typename Body, typename Allocator, typename Send, typename Fn>
