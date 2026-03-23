@@ -251,7 +251,7 @@ private:
 void MovePlayerAlongRoad(model::Player* player, double dt) {
     if (dt <= 0) return;
 
-    auto pos = player->GetPosition();
+    auto pos   = player->GetPosition();
     auto speed = player->GetSpeed();
 
     if (speed.vx == 0 && speed.vy == 0) return;
@@ -266,7 +266,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
 
     for (const auto& road : map->GetRoads()) {
         if (road.IsHorizontal()) {
-            double yc = road.GetStart().y; 
+            double yc = road.GetStart().y;           
             double left  = std::min(road.GetStart().x, road.GetEnd().x);
             double right = std::max(road.GetStart().x, road.GetEnd().x);
 
@@ -274,7 +274,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double x_max = right + 0.4;
 
             if (std::abs(pos.y - yc) <= 0.4001 &&
-                pos.x >= x_min - 0.01 && pos.x <= x_max + 0.01) {
+                pos.x >= x_min - 0.0001 && pos.x <= x_max + 0.0001) {
 
                 if (nx < x_min) {
                     nx = x_min;
@@ -284,7 +284,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                     speed.vx = 0.0;
                 }
 
-                ny = yc;
+                ny = yc + 0.4;
 
                 player->SetPosition({nx, ny});
                 player->SetSpeed(speed);
@@ -292,8 +292,8 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                 break;
             }
         }
-        else { 
-            double xc = road.GetStart().x; 
+        else {  
+            double xc = road.GetStart().x;          
             double top    = std::min(road.GetStart().y, road.GetEnd().y);
             double bottom = std::max(road.GetStart().y, road.GetEnd().y);
 
@@ -301,7 +301,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double y_max = bottom + 0.4;
 
             if (std::abs(pos.x - xc) <= 0.4001 &&
-                pos.y >= y_min - 0.01 && pos.y <= y_max + 0.01) {
+                pos.y >= y_min - 0.0001 && pos.y <= y_max + 0.0001) {
 
                 if (ny < y_min) {
                     ny = y_min;
@@ -311,7 +311,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                     speed.vy = 0.0;
                 }
 
-                nx = xc;
+                nx = xc + 0.4;
 
                 player->SetPosition({nx, ny});
                 player->SetSpeed(speed);
