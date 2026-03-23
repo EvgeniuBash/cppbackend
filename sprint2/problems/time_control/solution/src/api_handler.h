@@ -258,45 +258,51 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
     double new_x = pos.x + speed.vx * dt;
     double new_y = pos.y + speed.vy * dt;
 
-    bool moved = false;
-
     for (const auto& road : map->GetRoads()) {
         if (road.IsHorizontal()) {
             double y = road.GetStart().y;
             double left = std::min(road.GetStart().x, road.GetEnd().x);
             double right = std::max(road.GetStart().x, road.GetEnd().x);
 
-            if (pos.y >= y - 0.4 && pos.y <= y + 0.4 &&
-                new_x >= left - 0.4 && new_x <= right + 0.4) {
+            if (std::abs(pos.y - y) <= 0.4 &&
+                pos.x >= left - 0.4 && pos.x <= right + 0.4) {
 
-                if (new_x < left) new_x = left;
-                if (new_x > right) new_x = right;
+                if (new_x < left) {
+                    new_x = left;
+                    player->SetSpeed({0, 0});
+                }
+                if (new_x > right) {
+                    new_x = right;
+                    player->SetSpeed({0, 0});
+                }
 
                 player->SetPosition({new_x, y});
-                moved = true;
-                break;
+                return;
             }
         } else {
             double x = road.GetStart().x;
             double top = std::min(road.GetStart().y, road.GetEnd().y);
             double bottom = std::max(road.GetStart().y, road.GetEnd().y);
 
-            if (pos.x >= x - 0.4 && pos.x <= x + 0.4 &&
-                new_y >= top - 0.4 && new_y <= bottom + 0.4) {
+            if (std::abs(pos.x - x) <= 0.4 &&
+                pos.y >= top - 0.4 && pos.y <= bottom + 0.4) {
 
-                if (new_y < top) new_y = top;
-                if (new_y > bottom) new_y = bottom;
+                if (new_y < top) {
+                    new_y = top;
+                    player->SetSpeed({0, 0});
+                }
+                if (new_y > bottom) {
+                    new_y = bottom;
+                    player->SetSpeed({0, 0});
+                }
 
                 player->SetPosition({x, new_y});
-                moved = true;
-                break;
+                return;
             }
         }
     }
 
-    if (!moved) {
-        player->SetSpeed({0, 0});
-    }
+    player->SetSpeed({0, 0});
 }
     
     template <typename Body, typename Allocator, typename Send, typename Fn>

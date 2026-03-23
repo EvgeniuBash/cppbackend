@@ -15,28 +15,14 @@ static std::string GenerateToken() {
     return oss.str();
 }
 
-Player& PlayerManager::AddPlayer(std::string name, const Map& map) {
+Player& PlayerManager::AddPlayer(std::string name, const Map::Id& map_id) {
     Token token = GenerateToken();
 
-    players_.emplace_back(next_id_++, std::move(name), map.GetId(), token);
+    players_.emplace_back(next_id_++, std::move(name), map_id, token);
     Player& p = players_.back();
 
     token_to_player_[p.GetToken()] = &p;
-
-    const auto& roads = map.GetRoads();
-    if (!roads.empty()) {
-        const auto& road = roads[0];
-        if (road.IsHorizontal()) {
-            double y = (road.GetStart().y + road.GetEnd().y) / 2.0;
-            p.SetPosition({road.GetStart().x, y});
-        } else {
-            double x = (road.GetStart().x + road.GetEnd().x) / 2.0;
-            p.SetPosition({x, road.GetStart().y});
-        }
-    } else {
-        p.SetPosition({0.0, 0.0});
-    }
-
+    p.SetPosition({0.0, 0.0});
     p.SetSpeed({0.0, 0.0});
     p.SetDirection(Direction::NORTH);
 
