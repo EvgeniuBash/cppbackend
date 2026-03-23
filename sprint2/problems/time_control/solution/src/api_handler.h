@@ -268,7 +268,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double left  = std::min(road.GetStart().x, road.GetEnd().x);
             double right = std::max(road.GetStart().x, road.GetEnd().x);
 
-            if (std::abs(pos.y - (yc + 0.4)) <= 0.4) {
+            if  (std::abs(pos.y - yc) <= 0.4) {
 
                 double x_min = left  - 0.4;
                 double x_max = right + 0.4;
@@ -298,7 +298,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double top    = std::min(road.GetStart().y, road.GetEnd().y);
             double bottom = std::max(road.GetStart().y, road.GetEnd().y);
 
-            if (std::abs(pos.x - (xc + 0.4)) <= 0.4) {
+            if  (std::abs(pos.x - xc) <= 0.4) {
 
                 double y_min = top    - 0.4;
                 double y_max = bottom + 0.4;
