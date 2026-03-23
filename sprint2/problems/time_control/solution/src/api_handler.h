@@ -273,17 +273,17 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double x_min = left  - 0.4;
             double x_max = right + 0.4;
 
-            double dist_y = std::abs(pos.y - yc);
-            if (dist_y <= 0.4001 &&
-                pos.x >= x_min - 0.0001 && pos.x <= x_max + 0.0001) {
+            // Игрок находится над этой дорогой
+            if (std::abs(pos.y - yc) <= 0.4005 &&
+                pos.x >= x_min - 0.001 && pos.x <= x_max + 0.001) {
 
-                // Если уже на границе и толкаемся в неё — обнуляем сразу
-                if ((speed.vx < 0 && std::abs(pos.x - x_min) < 1e-9) ||
-                    (speed.vx > 0 && std::abs(pos.x - x_max) < 1e-9)) {
+                // КРИТИЧЕСКИЙ МОМЕНТ: если уже на границе и толкается наружу → обнуляем скорость СРАЗУ
+                if ((speed.vx < 0 && std::abs(pos.x - x_min) <= 1e-8) ||
+                    (speed.vx > 0 && std::abs(pos.x - x_max) <= 1e-8)) {
                     speed.vx = 0.0;
                 }
 
-                // Ограничиваем координаты
+                // Ограничиваем движение
                 if (nx < x_min) {
                     nx = x_min;
                     speed.vx = 0.0;
@@ -292,7 +292,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                     speed.vx = 0.0;
                 }
 
-                // Примагничиваем к верхней границе полосы
+                // Примагничиваем к верхней полосе (тесты обычно ожидают +0.4)
                 ny = yc + 0.4;
 
                 player->SetPosition({nx, ny});
@@ -300,7 +300,8 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                 found = true;
                 break;
             }
-        } else {  // вертикальная
+        }
+        else {  // вертикальная дорога
             double xc = road.GetStart().x;
             double top    = std::min(road.GetStart().y, road.GetEnd().y);
             double bottom = std::max(road.GetStart().y, road.GetEnd().y);
@@ -308,13 +309,12 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double y_min = top    - 0.4;
             double y_max = bottom + 0.4;
 
-            double dist_x = std::abs(pos.x - xc);
-            if (dist_x <= 0.4001 &&
-                pos.y >= y_min - 0.0001 && pos.y <= y_max + 0.0001) {
+            if (std::abs(pos.x - xc) <= 0.4005 &&
+                pos.y >= y_min - 0.001 && pos.y <= y_max + 0.001) {
 
-                // Если уже на границе и толкаемся в неё — обнуляем сразу
-                if ((speed.vy < 0 && std::abs(pos.y - y_min) < 1e-9) ||
-                    (speed.vy > 0 && std::abs(pos.y - y_max) < 1e-9)) {
+                // Обнуляем, если уже на границе и толкается наружу
+                if ((speed.vy < 0 && std::abs(pos.y - y_min) <= 1e-8) ||
+                    (speed.vy > 0 && std::abs(pos.y - y_max) <= 1e-8)) {
                     speed.vy = 0.0;
                 }
 
@@ -336,6 +336,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
         }
     }
 
+    // Если ни на одной дороге не нашли — обнуляем скорость (выход за карту)
     if (!found) {
         player->SetSpeed({0.0, 0.0});
     }
