@@ -260,7 +260,6 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
     double new_x = pos.x + speed.vx * dt;
     double new_y = pos.y + speed.vy * dt;
 
-    // ДВИЖЕНИЕ ПО ГОРИЗОНТАЛИ
     if (speed.vx != 0) {
         for (const auto& road : map->GetRoads()) {
             if (!road.IsHorizontal()) continue;
@@ -282,14 +281,14 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                     speed.vx = 0;
                 }
 
-                player->SetPosition({new_x, yc + 0.4});
+                double y_offset = (speed.vy < 0) ? -0.4 : 0.4;
+                player->SetPosition({new_x, yc + y_offset});
                 player->SetSpeed(speed);
                 return;
             }
         }
     }
 
-    // ДВИЖЕНИЕ ПО ВЕРТИКАЛИ
     if (speed.vy != 0) {
         for (const auto& road : map->GetRoads()) {
             if (!road.IsVertical()) continue;
@@ -310,15 +309,14 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                     new_y = y_max;
                     speed.vy = 0;
                 }
-
-                player->SetPosition({xc + 0.4, new_y});
+                double x_offset = (speed.vx < 0) ? -0.4 : 0.4;
+                player->SetPosition({xc + x_offset, new_y});
                 player->SetSpeed(speed);
                 return;
             }
         }
     }
 
-    // если не нашли дорогу — стоп
     player->SetSpeed({0, 0});
 }
     
