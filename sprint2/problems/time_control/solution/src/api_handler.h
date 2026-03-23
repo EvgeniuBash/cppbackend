@@ -406,6 +406,16 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
         send(std::move(res));
     }
 
+    static std::string DirToString(model::Direction dir) {
+    switch (dir) {
+        case model::Direction::NORTH: return "U";
+        case model::Direction::SOUTH: return "D";
+        case model::Direction::WEST:  return "L";
+        case model::Direction::EAST:  return "R";
+    }
+    return "U";
+}
+
 private:
     model::Game& game_;
     model::PlayerManager& players_;
