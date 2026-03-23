@@ -266,7 +266,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
 
     for (const auto& road : map->GetRoads()) {
         if (road.IsHorizontal()) {
-            double yc = road.GetStart().y;           
+            double yc = road.GetStart().y;
             double left  = std::min(road.GetStart().x, road.GetEnd().x);
             double right = std::max(road.GetStart().x, road.GetEnd().x);
 
@@ -276,24 +276,31 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             if (std::abs(pos.y - yc) <= 0.4001 &&
                 pos.x >= x_min - 0.0001 && pos.x <= x_max + 0.0001) {
 
+                bool hit_border = false;
+
                 if (nx < x_min) {
                     nx = x_min;
                     speed.vx = 0.0;
+                    hit_border = true;
                 } else if (nx > x_max) {
                     nx = x_max;
                     speed.vx = 0.0;
+                    hit_border = true;
                 }
 
                 ny = yc + 0.4;
 
                 player->SetPosition({nx, ny});
                 player->SetSpeed(speed);
+
                 found = true;
-                break;
+
+                if (hit_border) {
+                    break;
+                }
             }
-        }
-        else {  
-            double xc = road.GetStart().x;          
+        } else {  
+            double xc = road.GetStart().x;
             double top    = std::min(road.GetStart().y, road.GetEnd().y);
             double bottom = std::max(road.GetStart().y, road.GetEnd().y);
 
@@ -303,20 +310,28 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             if (std::abs(pos.x - xc) <= 0.4001 &&
                 pos.y >= y_min - 0.0001 && pos.y <= y_max + 0.0001) {
 
+                bool hit_border = false;
+
                 if (ny < y_min) {
                     ny = y_min;
                     speed.vy = 0.0;
+                    hit_border = true;
                 } else if (ny > y_max) {
                     ny = y_max;
                     speed.vy = 0.0;
+                    hit_border = true;
                 }
 
                 nx = xc + 0.4;
 
                 player->SetPosition({nx, ny});
                 player->SetSpeed(speed);
+
                 found = true;
-                break;
+
+                if (hit_border) {
+                    break;
+                }
             }
         }
     }
