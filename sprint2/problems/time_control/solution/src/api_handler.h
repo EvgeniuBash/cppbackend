@@ -282,7 +282,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                 }
 
                 double y_offset =
-                    (player->GetDirection() == model::Direction::U) ? -0.4 : 0.4;
+                    (player->GetDirection() == model::Direction::NORTH) ? -0.4 : 0.4;
                 player->SetPosition({new_x, yc + y_offset});
                 player->SetSpeed(speed);
                 return;
@@ -311,7 +311,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                     speed.vy = 0;
                 }
                 double x_offset =
-                    (player->GetDirection() == model::Direction::L) ? -0.4 : 0.4;
+                    (player->GetDirection() == model::Direction::WEST) ? -0.4 : 0.4;
                 player->SetPosition({xc + x_offset, new_y});
                 player->SetSpeed(speed);
                 return;
