@@ -260,7 +260,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
     double new_x = pos.x + speed.vx * dt;
     double new_y = pos.y + speed.vy * dt;
 
-    // ДВИЖЕНИЕ ПО ГОРИЗОНТАЛИ
+    // === ДВИЖЕНИЕ ПО X ===
     if (speed.vx != 0) {
         for (const auto& road : map->GetRoads()) {
             if (!road.IsHorizontal()) continue;
@@ -269,7 +269,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double left  = std::min(road.GetStart().x, road.GetEnd().x);
             double right = std::max(road.GetStart().x, road.GetEnd().x);
 
-            if (std::abs(pos.y - (yc + 0.4)) <= 0.4) {
+            if (std::abs(pos.y - yc) <= 0.4) {
 
                 double x_min = left  - 0.4;
                 double x_max = right + 0.4;
@@ -282,14 +282,15 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                     speed.vx = 0;
                 }
 
-                player->SetPosition({new_x, yc + 0.4});
+                // ❗ НЕ ТРОГАЕМ Y
+                player->SetPosition({new_x, pos.y});
                 player->SetSpeed(speed);
                 return;
             }
         }
     }
 
-    // ДВИЖЕНИЕ ПО ВЕРТИКАЛИ
+    // === ДВИЖЕНИЕ ПО Y ===
     if (speed.vy != 0) {
         for (const auto& road : map->GetRoads()) {
             if (!road.IsVertical()) continue;
@@ -298,7 +299,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double top    = std::min(road.GetStart().y, road.GetEnd().y);
             double bottom = std::max(road.GetStart().y, road.GetEnd().y);
 
-            if (std::abs(pos.x - (xc + 0.4)) <= 0.4) {
+            if (std::abs(pos.x - xc) <= 0.4) {
 
                 double y_min = top    - 0.4;
                 double y_max = bottom + 0.4;
@@ -311,14 +312,14 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                     speed.vy = 0;
                 }
 
-                player->SetPosition({xc + 0.4, new_y});
+                // ❗ НЕ ТРОГАЕМ X
+                player->SetPosition({pos.x, new_y});
                 player->SetSpeed(speed);
                 return;
             }
         }
     }
 
-    // если не нашли дорогу — стоп
     player->SetSpeed({0, 0});
 }
     

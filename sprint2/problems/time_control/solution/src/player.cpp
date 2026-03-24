@@ -21,7 +21,7 @@ Player& PlayerManager::AddPlayer(std::string name, const Map::Id& map_id) {
     Player& p = players_.back();
     token_to_player_[p.GetToken()] = &p;
     
-    p.SetPosition({0.0, 0.0});
+    p.SetPosition({0.4, 0.4});
     p.SetSpeed({0.0, 0.0});
     p.SetDirection(Direction::NORTH);
     return p;
