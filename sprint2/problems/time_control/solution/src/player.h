@@ -56,7 +56,7 @@ private:
 
 class PlayerManager {
 public:
-    Player& AddPlayer(std::string name, const Map::Id& map_id);
+    Player& AddPlayer(std::string name, const Map::Id& map_id, Position start_pos);
 
     Player* FindByToken(const Token& token);
 

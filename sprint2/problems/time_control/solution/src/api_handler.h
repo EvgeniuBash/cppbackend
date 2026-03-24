@@ -46,12 +46,23 @@ template <typename Send>
         }
 
         const model::Map* map = game_.FindMap(model::Map::Id{map_id});
-        if (!map) {
-            sendNotFound(req, send, "mapNotFound", "Map not found");
+            if (!map) {
+                sendNotFound(req, send, "mapNotFound", "Map not found");
+                return;
+        }
+
+        if (map->GetRoads().empty()) {
+            sendBadRequest(req, send, "Map has no roads");
             return;
         }
 
-        auto& player = players_.AddPlayer(name, map->GetId());
+        const auto& first_road = map->GetRoads().front();
+        model::Position start_pos{
+            static_cast<double>(first_road.GetStart().x),
+            static_cast<double>(first_road.GetStart().y)
+        };
+
+        auto& player = players_.AddPlayer(name, map->GetId(), start_pos);
 
         json::object resp{
             {"authToken", player.GetToken()},
@@ -248,41 +259,44 @@ void HandleState(http::request<Body, http::basic_fields<Allocator>>& req, Send&&
     }
 
 private:
-void MovePlayerAlongRoad(model::Player* player, double dt) {
-    if (!player || dt <= 0) return;
+void MovePlayerAlongRoad(model::Player* player, double dt_ms) {
+    if (!player || dt_ms <= 0) {
+        return;
+    }
 
     const model::Map* map = game_.FindMap(player->GetMapId());
-    if (!map) return;
+    if (!map) {
+        return;
+    }
+
+    const double dt = dt_ms / 1000.0;
 
     auto pos = player->GetPosition();
     auto speed = player->GetSpeed();
 
-    double new_x = pos.x + speed.vx * dt;
-    double new_y = pos.y + speed.vy * dt;
-
-    // === ДВИЖЕНИЕ ПО X ===
-    if (speed.vx != 0) {
+    if (speed.vx != 0.0) {
         for (const auto& road : map->GetRoads()) {
-            if (!road.IsHorizontal()) continue;
+            if (!road.IsHorizontal()) {
+                continue;
+            }
 
-            double yc = road.GetStart().y;
-            double left  = std::min(road.GetStart().x, road.GetEnd().x);
-            double right = std::max(road.GetStart().x, road.GetEnd().x);
+            const double y = static_cast<double>(road.GetStart().y);
+            const double left = static_cast<double>(std::min(road.GetStart().x, road.GetEnd().x)) - 0.4;
+            const double right = static_cast<double>(std::max(road.GetStart().x, road.GetEnd().x)) + 0.4;
 
-            if (std::abs(pos.y - yc) <= 0.4) {
+            if (pos.y >= y - 0.4 && pos.y <= y + 0.4 &&
+                pos.x >= left && pos.x <= right) {
 
-                double x_min = left  - 0.4;
-                double x_max = right + 0.4;
+                double new_x = pos.x + speed.vx * dt;
 
-                if (new_x < x_min) {
-                    new_x = x_min;
-                    speed.vx = 0;
-                } else if (new_x > x_max) {
-                    new_x = x_max;
-                    speed.vx = 0;
+                if (new_x < left) {
+                    new_x = left;
+                    speed.vx = 0.0;
+                } else if (new_x > right) {
+                    new_x = right;
+                    speed.vx = 0.0;
                 }
 
-                // ❗ НЕ ТРОГАЕМ Y
                 player->SetPosition({new_x, pos.y});
                 player->SetSpeed(speed);
                 return;
@@ -290,29 +304,29 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
         }
     }
 
-    // === ДВИЖЕНИЕ ПО Y ===
-    if (speed.vy != 0) {
+    if (speed.vy != 0.0) {
         for (const auto& road : map->GetRoads()) {
-            if (!road.IsVertical()) continue;
+            if (!road.IsVertical()) {
+                continue;
+            }
 
-            double xc = road.GetStart().x;
-            double top    = std::min(road.GetStart().y, road.GetEnd().y);
-            double bottom = std::max(road.GetStart().y, road.GetEnd().y);
+            const double x = static_cast<double>(road.GetStart().x);
+            const double top = static_cast<double>(std::min(road.GetStart().y, road.GetEnd().y)) - 0.4;
+            const double bottom = static_cast<double>(std::max(road.GetStart().y, road.GetEnd().y)) + 0.4;
 
-            if (std::abs(pos.x - xc) <= 0.4) {
+            if (pos.x >= x - 0.4 && pos.x <= x + 0.4 &&
+                pos.y >= top && pos.y <= bottom) {
 
-                double y_min = top    - 0.4;
-                double y_max = bottom + 0.4;
+                double new_y = pos.y + speed.vy * dt;
 
-                if (new_y < y_min) {
-                    new_y = y_min;
-                    speed.vy = 0;
-                } else if (new_y > y_max) {
-                    new_y = y_max;
-                    speed.vy = 0;
+                if (new_y < top) {
+                    new_y = top;
+                    speed.vy = 0.0;
+                } else if (new_y > bottom) {
+                    new_y = bottom;
+                    speed.vy = 0.0;
                 }
 
-                // ❗ НЕ ТРОГАЕМ X
                 player->SetPosition({pos.x, new_y});
                 player->SetSpeed(speed);
                 return;
@@ -320,7 +334,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
         }
     }
 
-    player->SetSpeed({0, 0});
+    player->SetSpeed({0.0, 0.0});
 }
     
     template <typename Body, typename Allocator, typename Send, typename Fn>

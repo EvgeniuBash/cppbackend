@@ -15,13 +15,13 @@ static std::string GenerateToken() {
     return oss.str();
 }
 
-Player& PlayerManager::AddPlayer(std::string name, const Map::Id& map_id) {
+Player& PlayerManager::AddPlayer(std::string name, const Map::Id& map_id, Position start_pos) {
     Token token = GenerateToken();
     players_.emplace_back(next_id_++, std::move(name), map_id, token);
     Player& p = players_.back();
     token_to_player_[p.GetToken()] = &p;
-    
-    p.SetPosition({0.4, 0.4});
+
+    p.SetPosition(start_pos);
     p.SetSpeed({0.0, 0.0});
     p.SetDirection(Direction::NORTH);
     return p;
