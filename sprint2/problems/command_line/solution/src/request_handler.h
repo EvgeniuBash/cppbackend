@@ -9,6 +9,7 @@
 #include <string_view>
 #include <algorithm>
 #include <filesystem>
+#include <optional>
 
 namespace fs = std::filesystem;
 
@@ -154,8 +155,11 @@ json::object SerializeOffice(const model::Office& office) {
 
 class RequestHandler {
 public:
-    explicit RequestHandler(model::Game& game, std::filesystem::path static_root, bool randomize_spawn,
-             std::optional<int> tick_period)
+    explicit RequestHandler(model::Game& game,
+                            model::PlayerManager& players,
+                            std::filesystem::path static_root,
+                            bool randomize_spawn,
+                            std::optional<int> tick_period)
         : game_(game)
         , players_(players)
         , static_root_(std::move(static_root))

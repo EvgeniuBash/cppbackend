@@ -1,10 +1,14 @@
 #pragma once
 
-#include "model.h"
+#include <boost/beast/http.hpp>
 #include <boost/json.hpp>
 #include "http_server.h"
-#include "player.h"
 #include <string>
+#include <random>
+#include <string_view>
+
+#include "model.h"
+#include "player.h"
 
 namespace http_handler {
 
@@ -13,8 +17,10 @@ namespace json = boost::json;
 
 class ApiHandler {
 public:
-    ApiHandler(model::Game& game, model::PlayerManager& players)
-        : game_(game), players_(players), randomize_spawn_(randomize_spawn) {}
+    ApiHandler(model::Game& game, model::PlayerManager& players, bool randomize_spawn)
+        : game_(game)
+        , players_(players)
+        , randomize_spawn_(randomize_spawn) {}
 
 template <typename Send>
     void HandleJoin(const http::request<http::string_body>& req, Send&& send) {
@@ -63,12 +69,12 @@ template <typename Send>
             static std::mt19937 gen(rd());
             std::uniform_int_distribution<size_t> dist(0, map->GetRoads().size() - 1);
             const auto& road = map->GetRoads()[dist(gen)];
-            start_pos = {static_cast<double>(road.GetStart().x),
-                         static_cast<double>(road.GetStart().y)};
+            start_pos.x = static_cast<double>(road.GetStart().x);
+            start_pos.y = static_cast<double>(road.GetStart().y);
         } else {
             const auto& first_road = map->GetRoads().front();
-            start_pos = {static_cast<double>(first_road.GetStart().x),
-                         static_cast<double>(first_road.GetStart().y)};
+            start_pos.x = static_cast<double>(road.GetStart().x);
+            start_pos.y = static_cast<double>(road.GetStart().y);
         }
 
         auto& player = players_.AddPlayer(name, map->GetId(), start_pos);
