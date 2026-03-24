@@ -159,7 +159,7 @@ public:
              std::optional<int> tick_period)
         : game_(game) 
         , static_root_(std::move(static_root))
-        , api_handler_(game_, players_)
+        , api_handler_(game_, players_, randomize_spawn_)
         , randomize_spawn_(randomize_spawn)
         , tick_period_(tick_period)
         {}
