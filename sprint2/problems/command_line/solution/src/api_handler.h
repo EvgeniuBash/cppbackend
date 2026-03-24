@@ -73,8 +73,8 @@ template <typename Send>
             start_pos.y = static_cast<double>(road.GetStart().y);
         } else {
             const auto& first_road = map->GetRoads().front();
-            start_pos.x = static_cast<double>(road.GetStart().x);
-            start_pos.y = static_cast<double>(road.GetStart().y);
+            start_pos.x = static_cast<double>(first_road.GetStart().x);
+            start_pos.y = static_cast<double>(first_road.GetStart().y);
         }
 
         auto& player = players_.AddPlayer(name, map->GetId(), start_pos);

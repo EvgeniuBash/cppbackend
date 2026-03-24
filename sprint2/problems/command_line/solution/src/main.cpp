@@ -12,6 +12,7 @@
 #include "request_handler.h"
 #include "player.h"
 #include "ticker.h"
+#include "logger.h"
 
 namespace net = boost::asio;
 namespace po = boost::program_options;
@@ -97,12 +98,11 @@ int main(int argc, const char* argv[]) {
     try {
         InitLogging();
 
-        auto args = ParseCommandLine(argc, argv);
-        if (!args) return 0; 
+        auto args_opt = ParseCommandLine(argc, argv);
+        if (!args_opt) return 0; 
+        const Args& args = *args_opt;
        
-        const Args args = *args_opt;
-
-        model::Game game = json_loader::LoadGame(args->config_file);
+        model::Game game = json_loader::LoadGame(args.config_file.string());
         model::PlayerManager players;
 
         net::io_context ioc(1);
@@ -110,9 +110,9 @@ int main(int argc, const char* argv[]) {
         http_handler::RequestHandler handler{
             game,
             players,
-            args->www_root,
+            args.www_root,
             args.randomize_spawn_points,
-            args->tick_period
+            args.tick_period
         };
         LoggingRequestHandler logging_handler{handler};
 
@@ -124,8 +124,8 @@ int main(int argc, const char* argv[]) {
             ticker = std::make_shared<Ticker>(
                 api_strand,
                 milliseconds(*args->tick_period),
-                [&game](milliseconds delta) {
-                    TickPlayers(players, delta); // авто-тикинг игры
+                [&players](milliseconds delta) {
+                    TickPlayers(players, delta);
                 }
             );
             ticker->Start();
