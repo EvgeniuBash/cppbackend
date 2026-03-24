@@ -4,7 +4,14 @@
 #include <optional>
 #include <vector>
 
-using namespace std::literals; 
+using namespace std::literals;
+
+struct Args {
+    std::optional<int> tick_period;
+    std::string config_file;
+    std::string www_root;
+    bool randomize_spawn = false;
+}; 
 
 std::optional<Args> ParseCommandLine(int argc, const char* const argv[]) {
     namespace po = boost::program_options;
