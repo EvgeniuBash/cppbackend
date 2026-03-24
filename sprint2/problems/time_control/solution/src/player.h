@@ -56,6 +56,8 @@ private:
 
 class PlayerManager {
 public:
+
+    explicit PlayerManager(const model::Game& game) : game_(game) {}
     Player& AddPlayer(std::string name, const Map::Id& map_id);
 
     Player* FindByToken(const Token& token);
