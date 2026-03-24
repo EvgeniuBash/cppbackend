@@ -9,6 +9,7 @@
 #include <string_view>
 #include <algorithm>
 #include <filesystem>
+#include <optional>
 
 namespace fs = std::filesystem;
 
@@ -26,6 +27,8 @@ const std::string API_PREFIX = "/api/";
 const std::string GAME_STATE = "/api/v1/game/state";
 const std::string GAME_ACTION = "/api/v1/game/player/action";
 const std::string GAME_TICK = "/api/v1/game/tick";
+const std::string GAME_JOiN = "/api/v1/game/join";
+const std::string GAME_PLAYERS = "/api/v1/game/players";
 
 namespace json_keys {
 
@@ -154,10 +157,17 @@ json::object SerializeOffice(const model::Office& office) {
 
 class RequestHandler {
 public:
-    explicit RequestHandler(model::Game& game, std::filesystem::path static_root)
-        : game_(game) 
+    explicit RequestHandler(model::Game& game,
+                            model::PlayerManager& players,
+                            std::filesystem::path static_root,
+                            bool randomize_spawn,
+                            std::optional<int> tick_period)
+        : game_(game)
+        , players_(players)
         , static_root_(std::move(static_root))
-        , api_handler_(game_, players_)
+        , api_handler_(game_, players_, randomize_spawn)
+        , randomize_spawn_(randomize_spawn)
+        , tick_period_(tick_period)
         {}
 
     RequestHandler(const RequestHandler&) = delete;
@@ -168,12 +178,31 @@ public:
                     Send&& send) {
 
         std::string target = std::string(req.target());
+
+        if (target == GAME_TICK && tick_period_.has_value()) {
+            json::object body{
+                {"code", "badRequest"},
+                {"message", "Invalid endpoint"}
+            };
+
+            http::response<http::string_body> response{
+                http::status::bad_request, req.version()
+            };
+
+            response.set(http::field::content_type, "application/json");
+            response.set(http::field::cache_control, "no-cache");
+            response.body() = json::serialize(body);
+            response.prepare_payload();
+
+            send(std::move(response));
+            return;
+        }
     
-        if (target == "/api/v1/game/join") {
+        if (target == GAME_JOiN) {
             api_handler_.HandleJoin(std::move(req), std::move(send));
             return;
         }
-        else if (target == "/api/v1/game/players") {
+        else if (target == GAME_PLAYERS) {
             api_handler_.HandlePlayers(std::move(req), std::move(send));
             return;
         }
@@ -195,20 +224,20 @@ public:
 
         if (req.method() != http::verb::get) {
             http::response<http::string_body> response{
-                http::status::method_not_allowed, req.version()};
-                response.set(http::field::content_type, "application/json");
+            http::status::method_not_allowed, req.version()};
+            response.set(http::field::content_type, "application/json");
 
-                json::object body{
-                    {"code", "invalidMethod"},
-                    {"message", "Invalid method"}
-                };
+            json::object body{
+                {"code", "invalidMethod"},
+                {"message", "Invalid method"}
+            };
 
-                response.body() = json::serialize(body);
-                response.prepare_payload();
+            response.body() = json::serialize(body);
+            response.prepare_payload();
 
-                send(std::move(response));
-                return;
-            }
+            send(std::move(response));
+            return;
+        }
 
         if (target == MAPS_ENDPOINT) {
             json::array maps_array;
@@ -307,7 +336,7 @@ public:
                 send(std::move(response));
                 return;
             }  
-             else {
+            else {
                 auto decoded_target = UrlDecode(target);
 
                 fs::path file_path;
@@ -382,9 +411,11 @@ public:
     }
 private:
     model::Game& game_;
+    model::PlayerManager& players_;
     std::filesystem::path static_root_;
-    model::PlayerManager players_;
     ApiHandler api_handler_;
+    bool randomize_spawn_;
+    std::optional<int> tick_period_;
 };
 
 } // namespace http_handler

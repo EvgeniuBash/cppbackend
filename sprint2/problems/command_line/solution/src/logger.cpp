@@ -19,7 +19,7 @@ void InitLogging() {
 
     auto sink = logging::add_console_log(
         std::cout,
-        boost::log::keywords::auto_flush = true // ✅ автофлаш
+        boost::log::keywords::auto_flush = true 
     );
 
     sink->set_formatter(

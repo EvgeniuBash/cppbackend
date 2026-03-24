@@ -1,10 +1,14 @@
 #pragma once
 
-#include "model.h"
+#include <boost/beast/http.hpp>
 #include <boost/json.hpp>
 #include "http_server.h"
-#include "player.h"
 #include <string>
+#include <random>
+#include <string_view>
+
+#include "model.h"
+#include "player.h"
 
 namespace http_handler {
 
@@ -13,10 +17,12 @@ namespace json = boost::json;
 
 class ApiHandler {
 public:
-    ApiHandler(model::Game& game, model::PlayerManager& players)
-        : game_(game), players_(players) {}
+    ApiHandler(model::Game& game, model::PlayerManager& players, bool randomize_spawn)
+        : game_(game)
+        , players_(players)
+        , randomize_spawn_(randomize_spawn) {}
 
-template <typename Send>
+    template <typename Send>
     void HandleJoin(const http::request<http::string_body>& req, Send&& send) {
         if (req.method() != http::verb::post) {
             sendMethodNotAllowed(req, send, "POST");
@@ -56,11 +62,20 @@ template <typename Send>
             return;
         }
 
-        const auto& first_road = map->GetRoads().front();
-        model::Position start_pos{
-            static_cast<double>(first_road.GetStart().x),
-            static_cast<double>(first_road.GetStart().y)
-        };
+        model::Position start_pos;
+
+        if (randomize_spawn_) {
+            static std::random_device rd;
+            static std::mt19937 gen(rd());
+            std::uniform_int_distribution<size_t> dist(0, map->GetRoads().size() - 1);
+            const auto& road = map->GetRoads()[dist(gen)];
+            start_pos.x = static_cast<double>(road.GetStart().x);
+            start_pos.y = static_cast<double>(road.GetStart().y);
+        } else {
+            const auto& first_road = map->GetRoads().front();
+            start_pos.x = static_cast<double>(first_road.GetStart().x);
+            start_pos.y = static_cast<double>(first_road.GetStart().y);
+        }
 
         auto& player = players_.AddPlayer(name, map->GetId(), start_pos);
 
@@ -99,41 +114,41 @@ template <typename Send>
         });
     }
 
-template <typename Body, typename Allocator, typename Send>
-void HandleState(http::request<Body, http::basic_fields<Allocator>>& req, Send&& send) {
-    if (req.method() != http::verb::get && req.method() != http::verb::head) {
-        sendMethodNotAllowed(req, send, "GET, HEAD");
-        return;
+    template <typename Body, typename Allocator, typename Send>
+    void HandleState(http::request<Body, http::basic_fields<Allocator>>& req, Send&& send) {
+        if (req.method() != http::verb::get && req.method() != http::verb::head) {
+            sendMethodNotAllowed(req, send, "GET, HEAD");
+            return;
+        }
+
+        ExecuteAuthorized(req, send, [&](model::Player* player) {
+            json::object players_json;
+
+            for (auto* p : players_.GetPlayersByMap(player->GetMapId())) {
+                json::object obj;
+
+                obj["pos"] = json::array({p->GetPosition().x, p->GetPosition().y});
+                obj["speed"] = json::array({p->GetSpeed().vx, p->GetSpeed().vy});
+                obj["dir"] = DirToString(p->GetDirection());
+
+                players_json[std::to_string(p->GetId())] = obj;
+            }
+
+            json::object result;
+            result["players"] = players_json;
+
+            http::response<http::string_body> res{http::status::ok, req.version()};
+            res.set(http::field::content_type, "application/json");
+            res.set(http::field::cache_control, "no-cache");
+
+            if (req.method() != http::verb::head) {
+                res.body() = json::serialize(result);
+            }
+
+            res.prepare_payload();
+            send(std::move(res));
+        });
     }
-
-    ExecuteAuthorized(req, send, [&](model::Player* player) {
-        json::object players_json;
-
-        for (auto* p : players_.GetPlayersByMap(player->GetMapId())) {
-            json::object obj;
-
-            obj["pos"] = json::array({p->GetPosition().x, p->GetPosition().y});
-            obj["speed"] = json::array({p->GetSpeed().vx, p->GetSpeed().vy});
-            obj["dir"] = DirToString(p->GetDirection());
-
-            players_json[std::to_string(p->GetId())] = obj;
-        }
-
-        json::object result;
-        result["players"] = players_json;
-
-        http::response<http::string_body> res{http::status::ok, req.version()};
-        res.set(http::field::content_type, "application/json");
-        res.set(http::field::cache_control, "no-cache");
-
-        if (req.method() != http::verb::head) {
-            res.body() = json::serialize(result);
-        }
-
-        res.prepare_payload();
-        send(std::move(res));
-    });
-}
 
     template <typename Body, typename Allocator, typename Send>
     void HandleAction(http::request<Body, http::basic_fields<Allocator>>& req, Send&& send) {
@@ -259,38 +274,38 @@ void HandleState(http::request<Body, http::basic_fields<Allocator>>& req, Send&&
     }
 
 private:
-void MovePlayerAlongRoad(model::Player* player, double dt) {
-    if (!player || dt <= 0) {
-        return;
-    }
-
-    const model::Map* map = game_.FindMap(player->GetMapId());
-    if (!map) {
-        return;
-    }
-
-    const auto pos = player->GetPosition();
-    const auto speed = player->GetSpeed();
-
-    const double target_x = pos.x + speed.vx * dt;
-    const double target_y = pos.y + speed.vy * dt;
-
-    bool found = false;
-    model::Position best_pos = pos;
-    model::Speed best_speed = speed;
-
-    auto is_better = [&](const model::Position& cand) {
-        if (!found) {
-            return true;
+    void MovePlayerAlongRoad(model::Player* player, double dt) {
+        if (!player || dt <= 0) {
+            return;
         }
-        if (speed.vx > 0) return cand.x > best_pos.x;
-        if (speed.vx < 0) return cand.x < best_pos.x;
-        if (speed.vy > 0) return cand.y > best_pos.y;
-        if (speed.vy < 0) return cand.y < best_pos.y;
-        return false;
-    };
 
-    for (const auto& road : map->GetRoads()) {
+        const model::Map* map = game_.FindMap(player->GetMapId());
+        if (!map) {
+            return;
+        }
+
+        const auto pos = player->GetPosition();
+        const auto speed = player->GetSpeed();
+
+        const double target_x = pos.x + speed.vx * dt;
+        const double target_y = pos.y + speed.vy * dt;
+
+        bool found = false;
+        model::Position best_pos = pos;
+        model::Speed best_speed = speed;
+
+        auto is_better = [&](const model::Position& cand) {
+            if (!found) {
+                return true;
+            }
+            if (speed.vx > 0) return cand.x > best_pos.x;
+            if (speed.vx < 0) return cand.x < best_pos.x;
+            if (speed.vy > 0) return cand.y > best_pos.y;
+            if (speed.vy < 0) return cand.y < best_pos.y;
+            return false;
+        };
+
+        for (const auto& road : map->GetRoads()) {
         double min_x, max_x, min_y, max_y;
 
         if (road.IsHorizontal()) {
@@ -313,7 +328,6 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             max_y = bottom + 0.4;
         }
 
-        // Игрок должен стоять на этой дороге сейчас
         if (!(pos.x >= min_x && pos.x <= max_x &&
               pos.y >= min_y && pos.y <= max_y)) {
             continue;
@@ -345,16 +359,16 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             best_pos = cand;
             best_speed = new_speed;
             found = true;
+            }
+        }
+
+        if (found) {
+            player->SetPosition(best_pos);
+            player->SetSpeed(best_speed);
+        } else {
+            player->SetSpeed({0.0, 0.0});
         }
     }
-
-    if (found) {
-        player->SetPosition(best_pos);
-        player->SetSpeed(best_speed);
-    } else {
-        player->SetSpeed({0.0, 0.0});
-    }
-}
     
     template <typename Body, typename Allocator, typename Send, typename Fn>
     void ExecuteAuthorized(const http::request<Body, http::basic_fields<Allocator>>& req, Send&& send, Fn&& action) {
@@ -458,18 +472,19 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
     }
 
     static std::string DirToString(model::Direction dir) {
-    switch (dir) {
-        case model::Direction::NORTH: return "U";
-        case model::Direction::SOUTH: return "D";
-        case model::Direction::WEST:  return "L";
-        case model::Direction::EAST:  return "R";
+        switch (dir) {
+            case model::Direction::NORTH: return "U";
+            case model::Direction::SOUTH: return "D";
+            case model::Direction::WEST:  return "L";
+            case model::Direction::EAST:  return "R";
+        }
+        return "U";
     }
-    return "U";
-}
 
 private:
     model::Game& game_;
     model::PlayerManager& players_;
+    bool randomize_spawn_;
 };
 
 } // namespace http_handler
