@@ -257,10 +257,18 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
     auto pos = player->GetPosition();
     auto speed = player->GetSpeed();
 
+    std::cout << "=== MovePlayer ===" << std::endl;
+    std::cout << "Map: " << *map->GetId() << std::endl;
+    std::cout << "Pos: (" << pos.x << ", " << pos.y << ")" << std::endl;
+    std::cout << "Speed: (" << speed.vx << ", " << speed.vy << ")" << std::endl;
+    std::cout << "dt: " << dt << std::endl;
+
     if (speed.vx == 0.0 && speed.vy == 0.0) return;
 
     double nx = pos.x + speed.vx * dt;
     double ny = pos.y + speed.vy * dt;
+
+    std::cout << "Target: (" << nx << ", " << ny << ")" << std::endl;
 
     bool processed = false;
 
@@ -273,8 +281,13 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double y_low = y_center - 0.4;
             double y_high = y_center + 0.4;
             
-            // Проверяем, находится ли игрок на этой дороге
+            std::cout << "Checking horizontal road: y_center=" << y_center 
+                      << ", y_low=" << y_low << ", y_high=" << y_high << std::endl;
+            std::cout << "Player y=" << pos.y << std::endl;
+            
             if (pos.y >= y_low - 1e-8 && pos.y <= y_high + 1e-8) {
+                std::cout << "Player is on this horizontal road!" << std::endl;
+                
                 double x_start = road.GetStart().x;
                 double x_end = road.GetEnd().x;
                 double x_min = std::min(x_start, x_end);
@@ -283,23 +296,25 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                 double left_bound = x_min - 0.4;
                 double right_bound = x_max + 0.4;
                 
-                // Если на границе и движемся наружу - останавливаем
+                std::cout << "X bounds: left=" << left_bound << ", right=" << right_bound << std::endl;
+                
                 if ((speed.vx < 0 && std::abs(pos.x - left_bound) <= 1e-8) ||
                     (speed.vx > 0 && std::abs(pos.x - right_bound) <= 1e-8)) {
                     nx = pos.x;
                     speed.vx = 0.0;
+                    std::cout << "At boundary, stopping" << std::endl;
                 }
                 
-                // Ограничиваем движение
                 if (nx < left_bound) {
                     nx = left_bound;
                     speed.vx = 0.0;
+                    std::cout << "Hit left bound, new nx=" << nx << std::endl;
                 } else if (nx > right_bound) {
                     nx = right_bound;
                     speed.vx = 0.0;
+                    std::cout << "Hit right bound, new nx=" << nx << std::endl;
                 }
                 
-                // Корректируем Y
                 double new_y = pos.y;
                 if (new_y < y_low) new_y = y_low;
                 if (new_y > y_high) new_y = y_high;
@@ -314,6 +329,7 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
 
     // Вертикальное движение
     if (!processed && speed.vy != 0.0) {
+        std::cout << "Processing vertical movement..." << std::endl;
         for (const auto& road : map->GetRoads()) {
             if (!road.IsVertical()) continue;
 
@@ -321,8 +337,13 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double x_low = x_center - 0.4;
             double x_high = x_center + 0.4;
             
-            // Проверяем, находится ли игрок на этой дороге
+            std::cout << "Checking vertical road: x_center=" << x_center 
+                      << ", x_low=" << x_low << ", x_high=" << x_high << std::endl;
+            std::cout << "Player x=" << pos.x << std::endl;
+            
             if (pos.x >= x_low - 1e-8 && pos.x <= x_high + 1e-8) {
+                std::cout << "Player is on this vertical road!" << std::endl;
+                
                 double y_start = road.GetStart().y;
                 double y_end = road.GetEnd().y;
                 double y_min = std::min(y_start, y_end);
@@ -331,23 +352,26 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                 double bottom_bound = y_min - 0.4;
                 double top_bound = y_max + 0.4;
                 
-                // Если на границе и движемся наружу - останавливаем
+                std::cout << "Y bounds: bottom=" << bottom_bound << ", top=" << top_bound << std::endl;
+                std::cout << "Current y=" << pos.y << ", target y=" << ny << std::endl;
+                
                 if ((speed.vy < 0 && std::abs(pos.y - bottom_bound) <= 1e-8) ||
                     (speed.vy > 0 && std::abs(pos.y - top_bound) <= 1e-8)) {
                     ny = pos.y;
                     speed.vy = 0.0;
+                    std::cout << "At boundary, stopping" << std::endl;
                 }
                 
-                // Ограничиваем движение
                 if (ny < bottom_bound) {
                     ny = bottom_bound;
                     speed.vy = 0.0;
+                    std::cout << "Hit bottom bound, new ny=" << ny << std::endl;
                 } else if (ny > top_bound) {
                     ny = top_bound;
                     speed.vy = 0.0;
+                    std::cout << "Hit top bound, new ny=" << ny << std::endl;
                 }
                 
-                // Корректируем X
                 double new_x = pos.x;
                 if (new_x < x_low) new_x = x_low;
                 if (new_x > x_high) new_x = x_high;
@@ -361,8 +385,13 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
     }
 
     if (!processed) {
+        std::cout << "No road found for movement!" << std::endl;
         player->SetSpeed({0.0, 0.0});
     }
+    
+    auto new_pos = player->GetPosition();
+    std::cout << "Final position: (" << new_pos.x << ", " << new_pos.y << ")" << std::endl;
+    std::cout << "==================" << std::endl;
 }
     
     template <typename Body, typename Allocator, typename Send, typename Fn>
