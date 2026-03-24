@@ -256,125 +256,87 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
 
     auto pos = player->GetPosition();
     auto speed = player->GetSpeed();
+    auto dir = player->GetDirection();
 
-    if (speed.vx == 0.0 && speed.vy == 0.0) return;
+    double new_x = pos.x + speed.vx * dt;
+    double new_y = pos.y + speed.vy * dt;
 
-    double nx = pos.x + speed.vx * dt;
-    double ny = pos.y + speed.vy * dt;
-
-    bool processed = false;
-
-    // Горизонтальное движение
-    if (speed.vx != 0.0) {
+    // === ДВИЖЕНИЕ ПО X (горизонталь) ===
+    if (speed.vx != 0) {
         for (const auto& road : map->GetRoads()) {
             if (!road.IsHorizontal()) continue;
 
-            double y_center = road.GetStart().y;
-            double y_low = y_center - 0.4;
-            double y_high = y_center + 0.4;
-            
-            if (pos.y >= y_low - 1e-8 && pos.y <= y_high + 1e-8) {
-                double x_start = road.GetStart().x;
-                double x_end = road.GetEnd().x;
-                double x_min = std::min(x_start, x_end);
-                double x_max = std::max(x_start, x_end);
-                
-                double left_bound = x_min - 0.4;
-                double right_bound = x_max + 0.4;
-                
-                if ((speed.vx < 0 && std::abs(pos.x - left_bound) <= 1e-8) ||
-                    (speed.vx > 0 && std::abs(pos.x - right_bound) <= 1e-8)) {
-                    nx = pos.x;
-                    speed.vx = 0.0;
+            double yc = road.GetStart().y;
+            if (std::abs(pos.y - yc) > 0.4) continue;
+
+            double left  = std::min(road.GetStart().x, road.GetEnd().x);
+            double right = std::max(road.GetStart().x, road.GetEnd().x);
+
+            // --- остановка ---
+            if (speed.vx > 0) { // EAST
+                double limit = right + 0.4;
+                if (new_x > limit) {
+                    new_x = limit;
+                    speed.vx = 0;
                 }
-                
-                if (nx < left_bound) {
-                    nx = left_bound;
-                    speed.vx = 0.0;
-                } else if (nx > right_bound) {
-                    nx = right_bound;
-                    speed.vx = 0.0;
+            } else { // WEST
+                double limit = left - 0.4;
+                if (new_x < limit) {
+                    new_x = limit;
+                    speed.vx = 0;
                 }
-                
-                double new_y = pos.y;
-                if (new_y < y_low) new_y = y_low;
-                if (new_y > y_high) new_y = y_high;
-                
-                player->SetPosition({nx, new_y});
-                player->SetSpeed(speed);
-                processed = true;
-                break;
             }
+
+            // --- смещение по Y ---
+            double y_offset =
+                (dir == model::Direction::NORTH) ? -0.4 :
+                (dir == model::Direction::SOUTH) ? 0.4 : 0.0;
+
+            player->SetPosition({new_x, yc + y_offset});
+            player->SetSpeed(speed);
+            return;
         }
     }
 
-    // Вертикальное движение - с принудительным движением
-    if (!processed && speed.vy != 0.0) {
-        bool found_road = false;
-        
+    // === ДВИЖЕНИЕ ПО Y (вертикаль) ===
+    if (speed.vy != 0) {
         for (const auto& road : map->GetRoads()) {
             if (!road.IsVertical()) continue;
 
-            double x_center = road.GetStart().x;
-            double x_low = x_center - 0.4;
-            double x_high = x_center + 0.4;
-            
-            if (pos.x >= x_low - 1e-8 && pos.x <= x_high + 1e-8) {
-                found_road = true;
-                
-                double y_start = road.GetStart().y;
-                double y_end = road.GetEnd().y;
-                double y_min = std::min(y_start, y_end);
-                double y_max = std::max(y_start, y_end);
-                
-                double bottom_bound = y_min - 0.4;
-                double top_bound = y_max + 0.4;
-                
-                if ((speed.vy < 0 && std::abs(pos.y - bottom_bound) <= 1e-8) ||
-                    (speed.vy > 0 && std::abs(pos.y - top_bound) <= 1e-8)) {
-                    ny = pos.y;
-                    speed.vy = 0.0;
+            double xc = road.GetStart().x;
+            if (std::abs(pos.x - xc) > 0.4) continue;
+
+            double top    = std::min(road.GetStart().y, road.GetEnd().y);
+            double bottom = std::max(road.GetStart().y, road.GetEnd().y);
+
+            // --- остановка ---
+            if (speed.vy > 0) { // SOUTH
+                double limit = bottom + 0.4;
+                if (new_y > limit) {
+                    new_y = limit;
+                    speed.vy = 0;
                 }
-                
-                if (ny < bottom_bound) {
-                    ny = bottom_bound;
-                    speed.vy = 0.0;
-                } else if (ny > top_bound) {
-                    ny = top_bound;
-                    speed.vy = 0.0;
+            } else { // NORTH
+                double limit = top - 0.4;
+                if (new_y < limit) {
+                    new_y = limit;
+                    speed.vy = 0;
                 }
-                
-                double new_x = pos.x;
-                if (new_x < x_low) new_x = x_low;
-                if (new_x > x_high) new_x = x_high;
-                
-                player->SetPosition({new_x, ny});
-                player->SetSpeed(speed);
-                processed = true;
-                break;
             }
-        }
-        
-        // Если не нашли дорогу - двигаемся принудительно
-        if (!found_road) {
-            // Принудительное движение с простыми границами
-            if (speed.vy < 0 && ny < -0.4) {
-                ny = -0.4;
-                speed.vy = 0.0;
-            } else if (speed.vy > 0 && ny > 40.4) {
-                ny = 40.4;
-                speed.vy = 0.0;
-            }
-            
-            player->SetPosition({pos.x, ny});
+
+            // --- смещение по X ---
+            double x_offset =
+                (dir == model::Direction::WEST) ? -0.4 :
+                (dir == model::Direction::EAST) ? 0.4 : 0.0;
+
+            player->SetPosition({xc + x_offset, new_y});
             player->SetSpeed(speed);
-            processed = true;
+            return;
         }
     }
 
-    if (!processed) {
-        player->SetSpeed({0.0, 0.0});
-    }
+    // === ЕСЛИ НЕ НА ДОРОГЕ ===
+    player->SetSpeed({0, 0});
 }
     
     template <typename Body, typename Allocator, typename Send, typename Fn>
