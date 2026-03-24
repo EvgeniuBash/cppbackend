@@ -44,4 +44,15 @@ std::vector<Player*> PlayerManager::GetPlayersByMap(const Map::Id& map_id) {
     return result;
 }
 
+std::vector<Player*> PlayerManager::GetAllPlayers() {
+    std::vector<Player*> result;
+    result.reserve(players_.size());
+
+    for (auto& player : players_) {
+        result.push_back(&player);
+    }
+
+    return result;
+}
+
 } // namespace model

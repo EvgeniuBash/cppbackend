@@ -5,7 +5,6 @@
 #include "model.h"
 #include "api_handler.h"
 #include "player.h"
-#include "merge.cpp"
 #include <string>
 #include <string_view>
 #include <algorithm>
@@ -157,9 +156,10 @@ class RequestHandler {
 public:
     explicit RequestHandler(model::Game& game, std::filesystem::path static_root, bool randomize_spawn,
              std::optional<int> tick_period)
-        : game_(game) 
+        : game_(game)
+        , players_(players)
         , static_root_(std::move(static_root))
-        , api_handler_(game_, players_, randomize_spawn_)
+        , api_handler_(game_, players_, randomize_spawn)
         , randomize_spawn_(randomize_spawn)
         , tick_period_(tick_period)
         {}
@@ -173,7 +173,7 @@ public:
 
         std::string target = std::string(req.target());
 
-                if (target == GAME_TICK && tick_period_.has_value()) {
+        if (target == GAME_TICK && tick_period_.has_value()) {
             json::object body{
                 {"code", "badRequest"},
                 {"message", "Invalid endpoint"}
@@ -218,20 +218,20 @@ public:
 
         if (req.method() != http::verb::get) {
             http::response<http::string_body> response{
-                http::status::method_not_allowed, req.version()};
-                response.set(http::field::content_type, "application/json");
+            http::status::method_not_allowed, req.version()};
+            response.set(http::field::content_type, "application/json");
 
-                json::object body{
-                    {"code", "invalidMethod"},
-                    {"message", "Invalid method"}
-                };
+            json::object body{
+                {"code", "invalidMethod"},
+                {"message", "Invalid method"}
+            };
 
-                response.body() = json::serialize(body);
-                response.prepare_payload();
+            response.body() = json::serialize(body);
+            response.prepare_payload();
 
-                send(std::move(response));
-                return;
-            }
+            send(std::move(response));
+            return;
+        }
 
         if (target == MAPS_ENDPOINT) {
             json::array maps_array;
@@ -405,8 +405,8 @@ public:
     }
 private:
     model::Game& game_;
+    model::PlayerManager& players_;
     std::filesystem::path static_root_;
-    model::PlayerManager players_;
     ApiHandler api_handler_;
     bool randomize_spawn_;
     std::optional<int> tick_period_;

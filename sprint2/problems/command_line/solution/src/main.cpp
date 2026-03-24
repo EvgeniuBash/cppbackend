@@ -1,10 +1,10 @@
 #include "sdk.h"
-#include "merge.cpp" // здесь ParseCommandLine и Args
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <iostream>
 #include <thread>
 #include <memory>
+#include <filesystem>
 
 #include "json_loader.h"
 #include "request_handler.h"
@@ -12,6 +12,15 @@
 #include "logger.h"
 
 namespace net = boost::asio;
+namespace po = boost::program_options;
+namespace fs = std::filesystem;
+
+struct Args {
+    std::optional<int> tick_period;
+    fs::path config_file;
+    fs::path www_root;
+    bool randomize_spawn_points = false;
+};
 
 int main(int argc, const char* argv[]) {
     try {

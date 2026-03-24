@@ -40,6 +40,7 @@ public:
     const Position& GetPosition() const { return pos_; }
     const Speed& GetSpeed() const { return speed_; }
     Direction GetDirection() const { return dir_; }
+
     void SetPosition(Position pos) { pos_ = pos; }
     void SetSpeed(Speed speed) { speed_ = speed; }
     void SetDirection(Direction dir) { dir_ = dir; }
@@ -61,10 +62,10 @@ public:
     Player* FindByToken(const Token& token);
 
     std::vector<Player*> GetPlayersByMap(const Map::Id& map_id);
+    std::vector<Player*> GetAllPlayers();
 
 private:
     PlayerId next_id_ = 0;
-
     std::deque<Player> players_;
     std::unordered_map<Token, Player*> token_to_player_;
 };
