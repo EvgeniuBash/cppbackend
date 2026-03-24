@@ -21,31 +21,7 @@ Player& PlayerManager::AddPlayer(std::string name, const Map::Id& map_id) {
     Player& p = players_.back();
     token_to_player_[p.GetToken()] = &p;
     
-    const Map* map = game_.FindMap(map_id);
-    if (map) {
-        const auto& roads = map->GetRoads();
-        if (!roads.empty()) {
-            const auto& first_road = roads[0];
-            Point start = first_road.GetStart();
-            
-            if (first_road.IsVertical()) {
-                // Для вертикальной дороги: ось по X, игрок смещен на +0.4 по X
-                p.SetPosition({static_cast<double>(start.x) + 0.4, 
-                               static_cast<double>(start.y)});
-            } else if (first_road.IsHorizontal()) {
-                // Для горизонтальной дороги: ось по Y, игрок смещен на +0.4 по Y
-                p.SetPosition({static_cast<double>(start.x), 
-                               static_cast<double>(start.y) + 0.4});
-            } else {
-                p.SetPosition({0.4, 0.4});
-            }
-        } else {
-            p.SetPosition({0.4, 0.4});
-        }
-    } else {
-        p.SetPosition({0.4, 0.4});
-    }
-    
+    p.SetPosition({0.4, 0.4});
     p.SetSpeed({0.0, 0.0});
     p.SetDirection(Direction::NORTH);
     return p;
