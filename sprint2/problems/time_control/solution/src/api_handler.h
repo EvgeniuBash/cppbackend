@@ -262,21 +262,20 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
     double nx = pos.x + speed.vx * dt;
     double ny = pos.y + speed.vy * dt;
 
-    // Пытаемся двигаться по горизонтали
+    bool processed = false;
+
+    // Горизонтальное движение
     if (speed.vx != 0.0) {
         for (const auto& road : map->GetRoads()) {
             if (!road.IsHorizontal()) continue;
 
             double yc = road.GetStart().y;
-            double left  = std::min(road.GetStart().x, road.GetEnd().x);
-            double right = std::max(road.GetStart().x, road.GetEnd().x);
+            double x_min = std::min(road.GetStart().x, road.GetEnd().x) - 0.4;
+            double x_max = std::max(road.GetStart().x, road.GetEnd().x) + 0.4;
 
-            double x_min = left - 0.4;
-            double x_max = right + 0.4;
-
-            // Находимся на этой горизонтальной дороге
-            if (std::abs(pos.y - (yc + 0.4)) <= 0.4005) {
-                // Если уже на границе и продолжаем толкаться в неё — обнуляем скорость
+            // Игрок находится в полосе этой дороги (ширина 0.8)
+            if (std::abs(pos.y - yc) <= 0.4005) {
+                // Если уже на границе и скорость толкает наружу — обнуляем
                 if ((speed.vx < 0 && std::abs(pos.x - x_min) <= 1e-8) ||
                     (speed.vx > 0 && std::abs(pos.x - x_max) <= 1e-8)) {
                     speed.vx = 0.0;
@@ -290,27 +289,25 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
                     speed.vx = 0.0;
                 }
 
+                // Примагничиваем к центру полосы (yc + 0.4)
                 player->SetPosition({nx, yc + 0.4});
                 player->SetSpeed(speed);
-                return;   // горизонтальное движение имеет приоритет
+                processed = true;
+                break;
             }
         }
     }
 
-    // Пытаемся двигаться по вертикали
-    if (speed.vy != 0.0) {
+    // Вертикальное движение (только если не обработали горизонтальное)
+    if (!processed && speed.vy != 0.0) {
         for (const auto& road : map->GetRoads()) {
             if (!road.IsVertical()) continue;
 
             double xc = road.GetStart().x;
-            double top    = std::min(road.GetStart().y, road.GetEnd().y);
-            double bottom = std::max(road.GetStart().y, road.GetEnd().y);
+            double y_min = std::min(road.GetStart().y, road.GetEnd().y) - 0.4;
+            double y_max = std::max(road.GetStart().y, road.GetEnd().y) + 0.4;
 
-            double y_min = top - 0.4;
-            double y_max = bottom + 0.4;
-
-            if (std::abs(pos.x - (xc + 0.4)) <= 0.4005) {
-                // Если уже на границе и толкаемся в стену — обнуляем
+            if (std::abs(pos.x - xc) <= 0.4005) {
                 if ((speed.vy < 0 && std::abs(pos.y - y_min) <= 1e-8) ||
                     (speed.vy > 0 && std::abs(pos.y - y_max) <= 1e-8)) {
                     speed.vy = 0.0;
@@ -326,13 +323,15 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
 
                 player->SetPosition({xc + 0.4, ny});
                 player->SetSpeed(speed);
-                return;
+                processed = true;
+                break;
             }
         }
     }
 
-    // Если ни на одной дороге не оказались — останавливаемся
-    player->SetSpeed({0.0, 0.0});
+    if (!processed) {
+        player->SetSpeed({0.0, 0.0});
+    }
 }
     
     template <typename Body, typename Allocator, typename Send, typename Fn>
