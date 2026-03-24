@@ -21,7 +21,6 @@ Player& PlayerManager::AddPlayer(std::string name, const Map::Id& map_id) {
     Player& p = players_.back();
     token_to_player_[p.GetToken()] = &p;
     
-    // Получаем карту через game_
     const Map* map = game_.FindMap(map_id);
     if (map) {
         const auto& roads = map->GetRoads();
@@ -29,18 +28,14 @@ Player& PlayerManager::AddPlayer(std::string name, const Map::Id& map_id) {
             const auto& first_road = roads[0];
             Point start = first_road.GetStart();
             
-            // Устанавливаем позицию в начальную точку дороги с учетом смещения 0.4
-            // Собака должна быть смещена от оси дороги на 0.4
-            if (first_road.IsHorizontal()) {
-                // Горизонтальная дорога: ось по Y, собака смещена по Y на ±0.4
-                // Используем +0.4 для начальной позиции
-                p.SetPosition({static_cast<double>(start.x), 
-                               static_cast<double>(start.y) + 0.4});
-            } else if (first_road.IsVertical()) {
-                // Вертикальная дорога: ось по X, собака смещена по X на ±0.4
-                // Используем +0.4 для начальной позиции
+            if (first_road.IsVertical()) {
+                // Для вертикальной дороги: ось по X, игрок смещен на +0.4 по X
                 p.SetPosition({static_cast<double>(start.x) + 0.4, 
                                static_cast<double>(start.y)});
+            } else if (first_road.IsHorizontal()) {
+                // Для горизонтальной дороги: ось по Y, игрок смещен на +0.4 по Y
+                p.SetPosition({static_cast<double>(start.x), 
+                               static_cast<double>(start.y) + 0.4});
             } else {
                 p.SetPosition({0.4, 0.4});
             }

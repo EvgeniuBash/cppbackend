@@ -259,50 +259,6 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
 
     if (speed.vx == 0.0 && speed.vy == 0.0) return;
 
-    // ВРЕМЕННОЕ РЕШЕНИЕ ДЛЯ ТЕСТОВ
-    // Простое движение без проверки дорог для карты town
-    if (*map->GetId() == "town") {
-        double nx = pos.x + speed.vx * dt;
-        double ny = pos.y + speed.vy * dt;
-        
-        // Для движения вверх (U)
-        if (speed.vy < 0) {
-            if (ny < -0.4) {
-                ny = -0.4;
-                speed.vy = 0.0;
-            }
-        }
-        // Для движения вниз (D)
-        else if (speed.vy > 0) {
-            // Верхняя граница - 20.4 (предположительно)
-            if (ny > 20.4) {
-                ny = 20.4;
-                speed.vy = 0.0;
-            }
-        }
-        
-        // Для движения влево (L)
-        if (speed.vx < 0) {
-            if (nx < -0.4) {
-                nx = -0.4;
-                speed.vx = 0.0;
-            }
-        }
-        // Для движения вправо (R)
-        else if (speed.vx > 0) {
-            // Правая граница - 38.516 (из тестов)
-            if (nx > 38.516) {
-                nx = 38.516;
-                speed.vx = 0.0;
-            }
-        }
-        
-        player->SetPosition({nx, ny});
-        player->SetSpeed(speed);
-        return;
-    }
-    
-    // Оригинальная логика для других карт (map1 и т.д.)
     double nx = pos.x + speed.vx * dt;
     double ny = pos.y + speed.vy * dt;
 
@@ -314,32 +270,39 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             if (!road.IsHorizontal()) continue;
 
             double y_center = road.GetStart().y;
-            double y_min = y_center - 0.4;
-            double y_max = y_center + 0.4;
+            double y_low = y_center - 0.4;
+            double y_high = y_center + 0.4;
             
-            double x_min = std::min(road.GetStart().x, road.GetEnd().x);
-            double x_max = std::max(road.GetStart().x, road.GetEnd().x);
-            double road_x_min = x_min - 0.4;
-            double road_x_max = x_max + 0.4;
-
-            if (pos.y >= y_min - 1e-6 && pos.y <= y_max + 1e-6) {
-                if ((speed.vx < 0 && std::abs(pos.x - road_x_min) <= 1e-6) ||
-                    (speed.vx > 0 && std::abs(pos.x - road_x_max) <= 1e-6)) {
-                    speed.vx = 0.0;
+            // Проверяем, находится ли игрок на этой дороге
+            if (pos.y >= y_low - 1e-8 && pos.y <= y_high + 1e-8) {
+                double x_start = road.GetStart().x;
+                double x_end = road.GetEnd().x;
+                double x_min = std::min(x_start, x_end);
+                double x_max = std::max(x_start, x_end);
+                
+                double left_bound = x_min - 0.4;
+                double right_bound = x_max + 0.4;
+                
+                // Если на границе и движемся наружу - останавливаем
+                if ((speed.vx < 0 && std::abs(pos.x - left_bound) <= 1e-8) ||
+                    (speed.vx > 0 && std::abs(pos.x - right_bound) <= 1e-8)) {
                     nx = pos.x;
-                }
-
-                if (nx < road_x_min) {
-                    nx = road_x_min;
-                    speed.vx = 0.0;
-                } else if (nx > road_x_max) {
-                    nx = road_x_max;
                     speed.vx = 0.0;
                 }
-
+                
+                // Ограничиваем движение
+                if (nx < left_bound) {
+                    nx = left_bound;
+                    speed.vx = 0.0;
+                } else if (nx > right_bound) {
+                    nx = right_bound;
+                    speed.vx = 0.0;
+                }
+                
+                // Корректируем Y
                 double new_y = pos.y;
-                if (new_y < y_min) new_y = y_min;
-                if (new_y > y_max) new_y = y_max;
+                if (new_y < y_low) new_y = y_low;
+                if (new_y > y_high) new_y = y_high;
                 
                 player->SetPosition({nx, new_y});
                 player->SetSpeed(speed);
@@ -355,32 +318,39 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             if (!road.IsVertical()) continue;
 
             double x_center = road.GetStart().x;
-            double x_min = x_center - 0.4;
-            double x_max = x_center + 0.4;
+            double x_low = x_center - 0.4;
+            double x_high = x_center + 0.4;
             
-            double y_min = std::min(road.GetStart().y, road.GetEnd().y);
-            double y_max = std::max(road.GetStart().y, road.GetEnd().y);
-            double road_y_min = y_min - 0.4;
-            double road_y_max = y_max + 0.4;
-
-            if (pos.x >= x_min - 1e-6 && pos.x <= x_max + 1e-6) {
-                if ((speed.vy < 0 && std::abs(pos.y - road_y_min) <= 1e-6) ||
-                    (speed.vy > 0 && std::abs(pos.y - road_y_max) <= 1e-6)) {
-                    speed.vy = 0.0;
+            // Проверяем, находится ли игрок на этой дороге
+            if (pos.x >= x_low - 1e-8 && pos.x <= x_high + 1e-8) {
+                double y_start = road.GetStart().y;
+                double y_end = road.GetEnd().y;
+                double y_min = std::min(y_start, y_end);
+                double y_max = std::max(y_start, y_end);
+                
+                double bottom_bound = y_min - 0.4;
+                double top_bound = y_max + 0.4;
+                
+                // Если на границе и движемся наружу - останавливаем
+                if ((speed.vy < 0 && std::abs(pos.y - bottom_bound) <= 1e-8) ||
+                    (speed.vy > 0 && std::abs(pos.y - top_bound) <= 1e-8)) {
                     ny = pos.y;
-                }
-
-                if (ny < road_y_min) {
-                    ny = road_y_min;
-                    speed.vy = 0.0;
-                } else if (ny > road_y_max) {
-                    ny = road_y_max;
                     speed.vy = 0.0;
                 }
-
+                
+                // Ограничиваем движение
+                if (ny < bottom_bound) {
+                    ny = bottom_bound;
+                    speed.vy = 0.0;
+                } else if (ny > top_bound) {
+                    ny = top_bound;
+                    speed.vy = 0.0;
+                }
+                
+                // Корректируем X
                 double new_x = pos.x;
-                if (new_x < x_min) new_x = x_min;
-                if (new_x > x_max) new_x = x_max;
+                if (new_x < x_low) new_x = x_low;
+                if (new_x > x_high) new_x = x_high;
                 
                 player->SetPosition({new_x, ny});
                 player->SetSpeed(speed);
