@@ -27,6 +27,8 @@ const std::string API_PREFIX = "/api/";
 const std::string GAME_STATE = "/api/v1/game/state";
 const std::string GAME_ACTION = "/api/v1/game/player/action";
 const std::string GAME_TICK = "/api/v1/game/tick";
+const std::string GAME_JOiN = "/api/v1/game/join";
+const std::string GAME_PLAYERS = "/api/v1/game/players";
 
 namespace json_keys {
 
@@ -196,11 +198,11 @@ public:
             return;
         }
     
-        if (target == "/api/v1/game/join") {
+        if (target == GAME_JOiN) {
             api_handler_.HandleJoin(std::move(req), std::move(send));
             return;
         }
-        else if (target == "/api/v1/game/players") {
+        else if (target == GAME_PLAYERS) {
             api_handler_.HandlePlayers(std::move(req), std::move(send));
             return;
         }
@@ -334,7 +336,7 @@ public:
                 send(std::move(response));
                 return;
             }  
-             else {
+            else {
                 auto decoded_target = UrlDecode(target);
 
                 fs::path file_path;
