@@ -269,28 +269,43 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
         return;
     }
 
-    auto pos = player->GetPosition();
-    auto speed = player->GetSpeed();
+    const auto pos = player->GetPosition();
+    const auto speed = player->GetSpeed();
 
-    double target_x = pos.x + speed.vx * dt;
-    double target_y = pos.y + speed.vy * dt;
+    const double target_x = pos.x + speed.vx * dt;
+    const double target_y = pos.y + speed.vy * dt;
+
+    bool found = false;
+    model::Position best_pos = pos;
+    model::Speed best_speed = speed;
+
+    auto is_better = [&](const model::Position& cand) {
+        if (!found) {
+            return true;
+        }
+        if (speed.vx > 0) return cand.x > best_pos.x;
+        if (speed.vx < 0) return cand.x < best_pos.x;
+        if (speed.vy > 0) return cand.y > best_pos.y;
+        if (speed.vy < 0) return cand.y < best_pos.y;
+        return false;
+    };
 
     for (const auto& road : map->GetRoads()) {
         double min_x, max_x, min_y, max_y;
 
         if (road.IsHorizontal()) {
-            double y = static_cast<double>(road.GetStart().y);
-            double left = static_cast<double>(std::min(road.GetStart().x, road.GetEnd().x));
-            double right = static_cast<double>(std::max(road.GetStart().x, road.GetEnd().x));
+            const double y = static_cast<double>(road.GetStart().y);
+            const double left = static_cast<double>(std::min(road.GetStart().x, road.GetEnd().x));
+            const double right = static_cast<double>(std::max(road.GetStart().x, road.GetEnd().x));
 
             min_x = left - 0.4;
             max_x = right + 0.4;
             min_y = y - 0.4;
             max_y = y + 0.4;
         } else {
-            double x = static_cast<double>(road.GetStart().x);
-            double top = static_cast<double>(std::min(road.GetStart().y, road.GetEnd().y));
-            double bottom = static_cast<double>(std::max(road.GetStart().y, road.GetEnd().y));
+            const double x = static_cast<double>(road.GetStart().x);
+            const double top = static_cast<double>(std::min(road.GetStart().y, road.GetEnd().y));
+            const double bottom = static_cast<double>(std::max(road.GetStart().y, road.GetEnd().y));
 
             min_x = x - 0.4;
             max_x = x + 0.4;
@@ -298,37 +313,47 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             max_y = bottom + 0.4;
         }
 
-        // Игрок находится на этой дороге?
-        if (pos.x >= min_x && pos.x <= max_x &&
-            pos.y >= min_y && pos.y <= max_y) {
+        // Игрок должен стоять на этой дороге сейчас
+        if (!(pos.x >= min_x && pos.x <= max_x &&
+              pos.y >= min_y && pos.y <= max_y)) {
+            continue;
+        }
 
-            double new_x = target_x;
-            double new_y = target_y;
-            auto new_speed = speed;
+        double new_x = target_x;
+        double new_y = target_y;
+        model::Speed new_speed = speed;
 
-            if (new_x < min_x) {
-                new_x = min_x;
-                new_speed.vx = 0.0;
-            } else if (new_x > max_x) {
-                new_x = max_x;
-                new_speed.vx = 0.0;
-            }
+        if (new_x < min_x) {
+            new_x = min_x;
+            new_speed.vx = 0.0;
+        } else if (new_x > max_x) {
+            new_x = max_x;
+            new_speed.vx = 0.0;
+        }
 
-            if (new_y < min_y) {
-                new_y = min_y;
-                new_speed.vy = 0.0;
-            } else if (new_y > max_y) {
-                new_y = max_y;
-                new_speed.vy = 0.0;
-            }
+        if (new_y < min_y) {
+            new_y = min_y;
+            new_speed.vy = 0.0;
+        } else if (new_y > max_y) {
+            new_y = max_y;
+            new_speed.vy = 0.0;
+        }
 
-            player->SetPosition({new_x, new_y});
-            player->SetSpeed(new_speed);
-            return;
+        model::Position cand{new_x, new_y};
+
+        if (is_better(cand)) {
+            best_pos = cand;
+            best_speed = new_speed;
+            found = true;
         }
     }
 
-    player->SetSpeed({0.0, 0.0});
+    if (found) {
+        player->SetPosition(best_pos);
+        player->SetSpeed(best_speed);
+    } else {
+        player->SetSpeed({0.0, 0.0});
+    }
 }
     
     template <typename Body, typename Allocator, typename Send, typename Fn>
