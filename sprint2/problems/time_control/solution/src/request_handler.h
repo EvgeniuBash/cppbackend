@@ -157,6 +157,7 @@ public:
     explicit RequestHandler(model::Game& game, std::filesystem::path static_root)
         : game_(game) 
         , static_root_(std::move(static_root))
+        , players_(game)
         , api_handler_(game_, players_)
         {}
 

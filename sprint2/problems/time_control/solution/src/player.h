@@ -64,6 +64,7 @@ public:
 
 private:
     PlayerId next_id_ = 0;
+    const Game& game_;
 
     std::deque<Player> players_;
     std::unordered_map<Token, Player*> token_to_player_;
