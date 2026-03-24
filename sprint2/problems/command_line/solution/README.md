@@ -7,7 +7,7 @@
 При сборке под Linux обязательно указываются флаги:
 * `-s compiler.libcxx=libstdc++11`
 * `-s build_type=???`
-
+d
 Вот пример конфигурирования для Release и Debug:
 ```
 # mkdir -p build-release 
