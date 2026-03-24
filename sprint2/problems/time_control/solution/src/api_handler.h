@@ -256,14 +256,15 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
 
     auto pos = player->GetPosition();
     auto speed = player->GetSpeed();
-    auto dir = player->GetDirection();
 
-    double new_x = pos.x + speed.vx * dt;
-    double new_y = pos.y + speed.vy * dt;
+    if (speed.vx == 0 && speed.vy == 0) return;
+
+    double nx = pos.x + speed.vx * dt;
+    double ny = pos.y + speed.vy * dt;
 
     bool moved = false;
 
-    // --- Движение по горизонтальной дороге ---
+    // Сначала пробуем горизонтальное движение (если есть vx)
     if (speed.vx != 0) {
         for (const auto& road : map->GetRoads()) {
             if (!road.IsHorizontal()) continue;
@@ -272,22 +273,35 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double left  = std::min(road.GetStart().x, road.GetEnd().x);
             double right = std::max(road.GetStart().x, road.GetEnd().x);
 
-            if (std::abs(pos.y - yc) <= 0.4) {
-                // Ограничиваем по X границами дороги
-                new_x = std::clamp(new_x, left - 0.4, right + 0.4);
+            double x_min = left - 0.4;
+            double x_max = right + 0.4;
 
-                // Смещаем Y по направлению игрока
-                double y_offset = (dir == model::Direction::NORTH) ? -0.4 :
-                                  (dir == model::Direction::SOUTH) ? 0.4 : 0.0;
+            // Игрок на этой горизонтальной дороге (с учётом ширины 0.8)
+            if (std::abs(pos.y - (yc + 0.4)) <= 0.4005) {
+                // Если уже на границе и толкаемся в стену — сразу обнуляем скорость
+                if ((speed.vx < 0 && std::abs(pos.x - x_min) < 1e-9) ||
+                    (speed.vx > 0 && std::abs(pos.x - x_max) < 1e-9)) {
+                    speed.vx = 0.0;
+                }
 
-                player->SetPosition({new_x, yc + y_offset});
+                if (nx < x_min) {
+                    nx = x_min;
+                    speed.vx = 0.0;
+                } else if (nx > x_max) {
+                    nx = x_max;
+                    speed.vx = 0.0;
+                }
+
+                player->SetPosition({nx, yc + 0.4});
+                player->SetSpeed(speed);
                 moved = true;
                 break;
             }
         }
     }
-    // --- Движение по вертикальной дороге ---
-    else if (speed.vy != 0) {
+
+    // Если не двигались по горизонтали и есть vy — пробуем вертикальное
+    if (!moved && speed.vy != 0) {
         for (const auto& road : map->GetRoads()) {
             if (!road.IsVertical()) continue;
 
@@ -295,46 +309,34 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
             double top    = std::min(road.GetStart().y, road.GetEnd().y);
             double bottom = std::max(road.GetStart().y, road.GetEnd().y);
 
-            if (std::abs(pos.x - xc) <= 0.4) {
-                // Ограничиваем по Y границами дороги
-                new_y = std::clamp(new_y, top - 0.4, bottom + 0.4);
+            double y_min = top - 0.4;
+            double y_max = bottom + 0.4;
 
-                // Смещаем X по направлению игрока
-                double x_offset = (dir == model::Direction::WEST) ? -0.4 :
-                                  (dir == model::Direction::EAST) ? 0.4 : 0.0;
+            if (std::abs(pos.x - (xc + 0.4)) <= 0.4005) {
+                if ((speed.vy < 0 && std::abs(pos.y - y_min) < 1e-9) ||
+                    (speed.vy > 0 && std::abs(pos.y - y_max) < 1e-9)) {
+                    speed.vy = 0.0;
+                }
 
-                player->SetPosition({xc + x_offset, new_y});
+                if (ny < y_min) {
+                    ny = y_min;
+                    speed.vy = 0.0;
+                } else if (ny > y_max) {
+                    ny = y_max;
+                    speed.vy = 0.0;
+                }
+
+                player->SetPosition({xc + 0.4, ny});
+                player->SetSpeed(speed);
                 moved = true;
                 break;
             }
         }
     }
 
-    // --- Выравнивание по дороге (только перпендикулярно движению) ---
-    if (moved) {
-        pos = player->GetPosition();
-        for (const auto& road : map->GetRoads()) {
-            if (road.IsHorizontal() && pos.x >= std::min(road.GetStart().x, road.GetEnd().x) - 0.4 &&
-                pos.x <= std::max(road.GetStart().x, road.GetEnd().x) + 0.4 &&
-                std::abs(pos.y - road.GetStart().y) <= 0.4) {
-                double y_offset = (dir == model::Direction::NORTH) ? -0.4 :
-                                  (dir == model::Direction::SOUTH) ? 0.4 : 0.0;
-                player->SetPosition({pos.x, road.GetStart().y + y_offset});
-                return;
-            }
-            if (road.IsVertical() && pos.y >= std::min(road.GetStart().y, road.GetEnd().y) - 0.4 &&
-                pos.y <= std::max(road.GetStart().y, road.GetEnd().y) + 0.4 &&
-                std::abs(pos.x - road.GetStart().x) <= 0.4) {
-                double x_offset = (dir == model::Direction::WEST) ? -0.4 :
-                                  (dir == model::Direction::EAST) ? 0.4 : 0.0;
-                player->SetPosition({road.GetStart().x + x_offset, pos.y});
-                return;
-            }
-        }
-    }
-    // --- Если совсем не на дороге — обнуляем скорость ---
-    else {
-        player->SetSpeed({0, 0});
+    // Если ни на одной дороге не оказались — стоп
+    if (!moved) {
+        player->SetSpeed({0.0, 0.0});
     }
 }
     
