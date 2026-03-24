@@ -13,6 +13,7 @@
 #include "player.h"
 #include "ticker.h"
 #include "logger.h"
+#include "logging_request_handler.h"
 
 namespace net = boost::asio;
 namespace po = boost::program_options;
@@ -119,11 +120,11 @@ int main(int argc, const char* argv[]) {
         using namespace std::chrono;
         std::shared_ptr<Ticker> ticker;
 
-        if (args->tick_period) {
+        if (args.tick_period) {
             auto api_strand = net::make_strand(ioc);
             ticker = std::make_shared<Ticker>(
                 api_strand,
-                milliseconds(*args->tick_period),
+                milliseconds(*args.tick_period),
                 [&players](milliseconds delta) {
                     TickPlayers(players, delta);
                 }
