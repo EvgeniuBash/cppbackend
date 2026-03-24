@@ -269,28 +269,44 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
         for (const auto& road : map->GetRoads()) {
             if (!road.IsHorizontal()) continue;
 
-            double yc = road.GetStart().y;
-            double x_min = std::min(road.GetStart().x, road.GetEnd().x) - 0.4;
-            double x_max = std::max(road.GetStart().x, road.GetEnd().x) + 0.4;
+            // Центр дороги по Y
+            double y_center = road.GetStart().y;
+            // Границы дороги с учетом ширины 0.8 (отступ 0.4 от центра)
+            double y_min = y_center - 0.4;
+            double y_max = y_center + 0.4;
+            
+            // Границы по X
+            double x_min = std::min(road.GetStart().x, road.GetEnd().x);
+            double x_max = std::max(road.GetStart().x, road.GetEnd().x);
+            
+            // Расширяем границы по X на ширину дороги
+            double road_x_min = x_min - 0.4;
+            double road_x_max = x_max + 0.4;
 
-            // Игрок находится в полосе этой дороги (ширина 0.8)
-            if (std::abs(pos.y - yc) <= 0.4005) {
-                // Если уже на границе и скорость толкает наружу — обнуляем
-                if ((speed.vx < 0 && std::abs(pos.x - x_min) <= 1e-8) ||
-                    (speed.vx > 0 && std::abs(pos.x - x_max) <= 1e-8)) {
+            // Проверяем, находится ли игрок на этой дороге (по Y)
+            if (pos.y >= y_min - 1e-8 && pos.y <= y_max + 1e-8) {
+                // Проверка на границу
+                if ((speed.vx < 0 && std::abs(pos.x - road_x_min) <= 1e-8) ||
+                    (speed.vx > 0 && std::abs(pos.x - road_x_max) <= 1e-8)) {
+                    speed.vx = 0.0;
+                    nx = pos.x;
+                }
+
+                // Ограничиваем движение по X
+                if (nx < road_x_min) {
+                    nx = road_x_min;
+                    speed.vx = 0.0;
+                } else if (nx > road_x_max) {
+                    nx = road_x_max;
                     speed.vx = 0.0;
                 }
 
-                if (nx < x_min) {
-                    nx = x_min;
-                    speed.vx = 0.0;
-                } else if (nx > x_max) {
-                    nx = x_max;
-                    speed.vx = 0.0;
-                }
-
-                // Примагничиваем к центру полосы (yc + 0.4)
-                player->SetPosition({nx, yc + 0.4});
+                // Сохраняем позицию, Y остается в пределах дороги
+                double new_y = pos.y;
+                if (new_y < y_min) new_y = y_min;
+                if (new_y > y_max) new_y = y_max;
+                
+                player->SetPosition({nx, new_y});
                 player->SetSpeed(speed);
                 processed = true;
                 break;
@@ -298,30 +314,49 @@ void MovePlayerAlongRoad(model::Player* player, double dt) {
         }
     }
 
-    // Вертикальное движение (только если не обработали горизонтальное)
+    // Вертикальное движение
     if (!processed && speed.vy != 0.0) {
         for (const auto& road : map->GetRoads()) {
             if (!road.IsVertical()) continue;
 
-            double xc = road.GetStart().x;
-            double y_min = std::min(road.GetStart().y, road.GetEnd().y) - 0.4;
-            double y_max = std::max(road.GetStart().y, road.GetEnd().y) + 0.4;
+            // Центр дороги по X
+            double x_center = road.GetStart().x;
+            // Границы дороги с учетом ширины 0.8 (отступ 0.4 от центра)
+            double x_min = x_center - 0.4;
+            double x_max = x_center + 0.4;
+            
+            // Границы по Y
+            double y_min = std::min(road.GetStart().y, road.GetEnd().y);
+            double y_max = std::max(road.GetStart().y, road.GetEnd().y);
+            
+            // Расширяем границы по Y на ширину дороги
+            double road_y_min = y_min - 0.4;
+            double road_y_max = y_max + 0.4;
 
-            if (std::abs(pos.x - xc) <= 0.4005) {
-                if ((speed.vy < 0 && std::abs(pos.y - y_min) <= 1e-8) ||
-                    (speed.vy > 0 && std::abs(pos.y - y_max) <= 1e-8)) {
+            // Проверяем, находится ли игрок на этой дороге (по X)
+            if (pos.x >= x_min - 1e-8 && pos.x <= x_max + 1e-8) {
+                // Проверка на границу
+                if ((speed.vy < 0 && std::abs(pos.y - road_y_min) <= 1e-8) ||
+                    (speed.vy > 0 && std::abs(pos.y - road_y_max) <= 1e-8)) {
+                    speed.vy = 0.0;
+                    ny = pos.y;
+                }
+
+                // Ограничиваем движение по Y
+                if (ny < road_y_min) {
+                    ny = road_y_min;
+                    speed.vy = 0.0;
+                } else if (ny > road_y_max) {
+                    ny = road_y_max;
                     speed.vy = 0.0;
                 }
 
-                if (ny < y_min) {
-                    ny = y_min;
-                    speed.vy = 0.0;
-                } else if (ny > y_max) {
-                    ny = y_max;
-                    speed.vy = 0.0;
-                }
-
-                player->SetPosition({xc + 0.4, ny});
+                // Сохраняем позицию, X остается в пределах дороги
+                double new_x = pos.x;
+                if (new_x < x_min) new_x = x_min;
+                if (new_x > x_max) new_x = x_max;
+                
+                player->SetPosition({new_x, ny});
                 player->SetSpeed(speed);
                 processed = true;
                 break;
