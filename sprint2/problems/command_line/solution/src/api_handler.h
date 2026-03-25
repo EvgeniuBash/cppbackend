@@ -305,6 +305,8 @@ private:
             return false;
         };
 
+        constexpr double kRoadHalfWidth = 0.4;
+
         for (const auto& road : map->GetRoads()) {
         double min_x, max_x, min_y, max_y;
 
@@ -313,19 +315,19 @@ private:
             const double left = static_cast<double>(std::min(road.GetStart().x, road.GetEnd().x));
             const double right = static_cast<double>(std::max(road.GetStart().x, road.GetEnd().x));
 
-            min_x = left - 0.4;
-            max_x = right + 0.4;
-            min_y = y - 0.4;
-            max_y = y + 0.4;
+            min_x = left - kRoadHalfWidth;
+            max_x = right + kRoadHalfWidth;
+            min_y = y - kRoadHalfWidth;
+            max_y = y + kRoadHalfWidth;
         } else {
             const double x = static_cast<double>(road.GetStart().x);
             const double top = static_cast<double>(std::min(road.GetStart().y, road.GetEnd().y));
             const double bottom = static_cast<double>(std::max(road.GetStart().y, road.GetEnd().y));
 
-            min_x = x - 0.4;
-            max_x = x + 0.4;
-            min_y = top - 0.4;
-            max_y = bottom + 0.4;
+            min_x = x - kRoadHalfWidth;
+            max_x = x + kRoadHalfWidth;
+            min_y = top - kRoadHalfWidth;
+            max_y = bottom + kRoadHalfWidth;
         }
 
         if (!(pos.x >= min_x && pos.x <= max_x &&
@@ -408,22 +410,22 @@ private:
     }
 
     template <typename Send>
-    void sendBadRequest(const http::request<http::string_body>& req, Send&& send, const std::string& message) {
+    void SendBadRequest(const http::request<http::string_body>& req, Send&& send, const std::string& message) {
         sendError(req, send, http::status::bad_request, "invalidArgument", message);
     }
 
     template <typename Send>
-    void sendNotFound(const http::request<http::string_body>& req, Send&& send, const std::string& code, const std::string& message) {
+    void SendNotFound(const http::request<http::string_body>& req, Send&& send, const std::string& code, const std::string& message) {
         sendError(req, send, http::status::not_found, code, message);
     }
 
     template <typename Send>
-    void sendUnauthorized(const http::request<http::string_body>& req, Send&& send, const std::string& code, const std::string& message) {
+    void SendUnauthorized(const http::request<http::string_body>& req, Send&& send, const std::string& code, const std::string& message) {
         sendError(req, send, http::status::unauthorized, code, message);
     }
 
     template <typename Send>
-    void sendMethodNotAllowed(const http::request<http::string_body>& req, Send&& send, const std::string& allow) {
+    void SendMethodNotAllowed(const http::request<http::string_body>& req, Send&& send, const std::string& allow) {
         http::response<http::string_body> res{http::status::method_not_allowed, req.version()};
         res.set(http::field::allow, allow);
         res.set(http::field::content_type, "application/json");
@@ -439,8 +441,7 @@ private:
     }
 
     template <typename Send>
-    void sendError(const http::request<http::string_body>& req, Send&& send, http::status status,
-                   const std::string& code, const std::string& message) {
+    void SendError(const http::request<http::string_body>& req, Send&& send, http::status status, const std::string& code, const std::string& message) {
         http::response<http::string_body> res{status, req.version()};
         res.set(http::field::content_type, "application/json");
         res.set(http::field::cache_control, "no-cache");
@@ -455,9 +456,7 @@ private:
     }
 
     template <typename Send>
-    void sendInvalidArgument(const http::request<http::string_body>& req,
-                         Send&& send,
-                         const std::string& message) {
+    void SendInvalidArgument(const http::request<http::string_body>& req, Send&& send, const std::string& message) {
         json::object obj;
         obj["code"] = "invalidArgument";
         obj["message"] = message;

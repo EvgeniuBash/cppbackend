@@ -82,7 +82,8 @@ struct Args {
 }
 
 void TickPlayers(model::PlayerManager& players, std::chrono::milliseconds delta) {
-    const double dt = delta.count() / 1000.0;
+    constexpr double kMillisecondsInSecond = 1000.0;
+    const double dt = delta.count() / kMillisecondsInSecond;
 
     for (auto* player : players.GetAllPlayers()) {
         auto pos = player->GetPosition();
