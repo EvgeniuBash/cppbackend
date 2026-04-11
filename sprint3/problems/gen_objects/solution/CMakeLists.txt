@@ -33,8 +33,6 @@ add_executable(game_server_tests
     src/model.cpp
     src/player.cpp
     src/loot_generator.cpp
-    src/geom.h
-    src/tagged.h
 
     tests/loot_generator_tests.cpp
     tests/loot_tests.cpp
