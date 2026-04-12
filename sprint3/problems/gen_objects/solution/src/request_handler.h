@@ -191,9 +191,24 @@ private:
 
     template <typename Send>
     void SendError(Send&& send, const auto& req, http::status status) {
+
+        std::string code;
+        std::string message;
+
+        if (status == http::status::method_not_allowed) {
+            code = "invalidMethod";
+            message = "Invalid method";
+        } else if (status == http::status::bad_request) {
+            code = "invalidRequest";
+            message = "Bad request";
+        } else {
+            code = "invalidRequest";
+            message = "Invalid request";
+        }
+
         json::object body{
-            {"code", "invalidRequest"},
-            {"message", "Invalid request"}
+            {"code", code},
+            {"message", message}
         };
 
         http::response<http::string_body> res{status, req.version()};
