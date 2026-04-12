@@ -265,14 +265,16 @@ public:
                 pos.y = y_dist(gen);
             }
 
-            LostObject obj;
-            obj.id = next_loot_id_++;
-            obj.map_id = map.GetId();
             std::uniform_int_distribution<size_t> type_dist(0, map.GetLootTypesCount() - 1);
-            obj.type = type_dist(gen); 
-            obj.pos = pos;
 
-            lost_objects_[obj.id] = obj;
+            LostObject obj{
+                next_loot_id_++,
+                map.GetId(),
+                type_dist(gen),
+                pos
+            };
+
+            lost_objects_.emplace(obj.id, obj);
         }
     }
    
