@@ -50,6 +50,5 @@ target_link_libraries(game_server_tests
 )
 
 include(CTest)
-include(${CONAN_BUILD_DIRS_CATCH2}/Catch.cmake)
-
-catch_discover_tests(game_server_tests)
+enable_testing()
+add_test(NAME game_server_tests COMMAND game_server_tests)
