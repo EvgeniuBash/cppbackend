@@ -330,6 +330,102 @@ public:
     }
 
 private:
+    void MovePlayerAlongRoad(model::Player* player, double dt) {
+        if (!player || dt <= 0) {
+            return;
+        }
+
+        const model::Map* map = game_.FindMap(player->GetMapId());
+        if (!map) {
+            return;
+        }
+
+        const auto pos = player->GetPosition();
+        const auto speed = player->GetSpeed();
+
+        const double target_x = pos.x + speed.vx * dt;
+        const double target_y = pos.y + speed.vy * dt;
+
+        bool found = false;
+        model::Position best_pos = pos;
+        model::Speed best_speed = speed;
+
+        auto is_better = [&](const model::Position& cand) {
+            if (!found) {
+                return true;
+            }
+            if (speed.vx > 0) return cand.x > best_pos.x;
+            if (speed.vx < 0) return cand.x < best_pos.x;
+            if (speed.vy > 0) return cand.y > best_pos.y;
+            if (speed.vy < 0) return cand.y < best_pos.y;
+            return false;
+        };
+
+        for (const auto& road : map->GetRoads()) {
+        double min_x, max_x, min_y, max_y;
+
+        if (road.IsHorizontal()) {
+            const double y = static_cast<double>(road.GetStart().y);
+            const double left = static_cast<double>(std::min(road.GetStart().x, road.GetEnd().x));
+            const double right = static_cast<double>(std::max(road.GetStart().x, road.GetEnd().x));
+
+            min_x = left - 0.4;
+            max_x = right + 0.4;
+            min_y = y - 0.4;
+            max_y = y + 0.4;
+        } else {
+            const double x = static_cast<double>(road.GetStart().x);
+            const double top = static_cast<double>(std::min(road.GetStart().y, road.GetEnd().y));
+            const double bottom = static_cast<double>(std::max(road.GetStart().y, road.GetEnd().y));
+
+            min_x = x - 0.4;
+            max_x = x + 0.4;
+            min_y = top - 0.4;
+            max_y = bottom + 0.4;
+        }
+
+        if (!(pos.x >= min_x && pos.x <= max_x &&
+              pos.y >= min_y && pos.y <= max_y)) {
+            continue;
+        }
+
+        double new_x = target_x;
+        double new_y = target_y;
+        model::Speed new_speed = speed;
+
+        if (new_x < min_x) {
+            new_x = min_x;
+            new_speed.vx = 0.0;
+        } else if (new_x > max_x) {
+            new_x = max_x;
+            new_speed.vx = 0.0;
+        }
+
+        if (new_y < min_y) {
+            new_y = min_y;
+            new_speed.vy = 0.0;
+        } else if (new_y > max_y) {
+            new_y = max_y;
+            new_speed.vy = 0.0;
+        }
+
+        model::Position cand{new_x, new_y};
+
+        if (is_better(cand)) {
+            best_pos = cand;
+            best_speed = new_speed;
+            found = true;
+            }
+        }
+
+        if (found) {
+            player->SetPosition(best_pos);
+            player->SetSpeed(best_speed);
+        } else {
+            player->SetSpeed({0.0, 0.0});
+        }
+    }
+    
     template <typename Body, typename Allocator, typename Send, typename Fn>
     void ExecuteAuthorized(const http::request<Body, http::basic_fields<Allocator>>& req,
                            Send&& send,
@@ -433,6 +529,33 @@ private:
 
         res.body() = json::serialize(body);
         res.prepare_payload();
+        send(std::move(res));
+    }
+
+    static std::string DirToString(model::Direction dir) {
+        switch (dir) {
+            case model::Direction::NORTH: return "U";
+            case model::Direction::SOUTH: return "D";
+            case model::Direction::WEST:  return "L";
+            case model::Direction::EAST:  return "R";
+        }
+        return "U";
+    }
+
+    template <typename Send>
+    void sendInvalidArgument(const http::request<http::string_body>& req,
+                         Send&& send,
+                         const std::string& message) {
+        json::object obj;
+        obj["code"] = "invalidArgument";
+        obj["message"] = message;
+
+        http::response<http::string_body> res{http::status::bad_request, req.version()};
+        res.set(http::field::content_type, "application/json");
+        res.set(http::field::cache_control, "no-cache");
+        res.body() = json::serialize(obj);
+        res.prepare_payload();
+
         send(std::move(res));
     }
 
