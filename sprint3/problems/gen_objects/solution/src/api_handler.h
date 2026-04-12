@@ -86,7 +86,7 @@ public:
             {"playerId", player.GetId()}
         };
 
-        http::response<http::string_body> res{http::status::ok, req.version()};
+        http::response<http::string_body> res(http::status::ok, req.version());
         res.set(http::field::content_type, "application/json");
         res.set(http::field::cache_control, "no-cache");
         res.body() = json::serialize(resp);
@@ -105,7 +105,7 @@ public:
             json::object result;
             result["players"] = players_json;
 
-            http::response<http::string_body> res{http::status::ok, req.version()};
+            http::response<http::string_body> res(http::status::ok, req.version());
             res.set(http::field::content_type, "application/json");
             res.set(http::field::cache_control, "no-cache");
             if (req.method() != http::verb::head) {
@@ -154,7 +154,7 @@ public:
             result["players"] = players_json;
             result["lostObjects"] = loot_json;
 
-            http::response<http::string_body> res{http::status::ok, req.version()};
+            http::response<http::string_body> res(http::status::ok, req.version());
             res.set(http::field::content_type, "application/json");
             res.set(http::field::cache_control, "no-cache");
 
@@ -224,7 +224,7 @@ public:
                 player->SetSpeed({0, 0});
             }
 
-            http::response<http::string_body> res{http::status::ok, req.version()};
+            http::response<http::string_body> res(http::status::ok, req.version());
             res.set(http::field::content_type, "application/json");
             res.set(http::field::cache_control, "no-cache");
             res.body() = "{}";
@@ -288,7 +288,7 @@ public:
         }
    
 
-        http::response<http::string_body> res{http::status::ok, req.version()};
+        http::response<http::string_body> res(http::status::ok, req.version());
         res.set(http::field::content_type, "application/json");
         res.set(http::field::cache_control, "no-cache");
         res.body() = "{}";
@@ -350,7 +350,7 @@ public:
 
         result["offices"] = offices;
 
-        http::response<http::string_body> res{http::status::ok, req.version()};
+        http::response<http::string_body> res(http::status::ok, req.version());
         res.set(http::field::content_type, "application/json");
         res.set(http::field::cache_control, "no-cache");
         res.body() = json::serialize(result);
