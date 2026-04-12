@@ -96,7 +96,7 @@ public:
         res.set(http::field::cache_control, "no-cache");
         res.body() = json::serialize(resp);
         res.prepare_payload();
-        std::forward<Send>(send)(std::move(res));
+        send(std::move(res));
     }
 
     template <typename Send>
@@ -123,7 +123,7 @@ public:
                 }
 
                 res.prepare_payload();
-                std::forward<Send>(send)(std::move(res));
+                send(std::move(res));
             });
     }
 
@@ -174,7 +174,7 @@ public:
                 }
 
                 res.prepare_payload();
-                std::forward<Send>(send)(std::move(res));
+                send(std::move(res));
             });
     }
 
@@ -230,7 +230,7 @@ public:
                 res.body() = "{}";
                 res.prepare_payload();
 
-                std::forward<Send>(send)(std::move(res));
+                send(std::move(res));
             });
     }
 
@@ -291,7 +291,7 @@ public:
         res.body() = "{}";
         res.prepare_payload();
 
-        std::forward<Send>(send)(std::move(res));
+        send(std::move(res));
     }
 
     template <typename Send>
@@ -310,10 +310,18 @@ public:
 
         json::array roads;
         for (const auto& r : map->GetRoads()) {
-            roads.push_back(json::object{
-                {"x0", r.GetStart().x},
-                {"y0", r.GetStart().y}
-            });
+            json::object obj;
+
+            obj["x0"] = r.GetStart().x;
+            obj["y0"] = r.GetStart().y;
+
+            if (r.IsHorizontal()) {
+                obj["x1"] = r.GetEnd().x;
+            } else {
+                obj["y1"] = r.GetEnd().y;
+            }
+
+            roads.push_back(obj);
         }
 
         result["roads"] = std::move(roads);
@@ -326,7 +334,7 @@ public:
         res.body() = json::serialize(result);
         res.prepare_payload();
 
-        std::forward<Send>(send)(std::move(res));
+        send(std::move(res));
     }
 
 private:
@@ -509,7 +517,7 @@ private:
 
         res.body() = json::serialize(body);
         res.prepare_payload();
-        std::forward<Send>(send)(std::move(res));
+        send(std::move(res));
     }
 
     template <typename Send>
@@ -529,7 +537,7 @@ private:
 
         res.body() = json::serialize(body);
         res.prepare_payload();
-        std::forward<Send>(send)(std::move(res));
+        send(std::move(res));
     }
 
     static std::string DirToString(model::Direction dir) {
@@ -556,7 +564,7 @@ private:
         res.body() = json::serialize(obj);
         res.prepare_payload();
 
-        std::forward<Send>(send)(std::move(res));
+        send(std::move(res));
     }
 
 private:
