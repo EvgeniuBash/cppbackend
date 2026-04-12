@@ -96,7 +96,7 @@ public:
         res.set(http::field::cache_control, "no-cache");
         res.body() = json::serialize(resp);
         res.prepare_payload();
-        send(std::move(res));
+        std::forward<Send>(send)(std::move(res));
     }
 
     template <typename Send>
@@ -123,7 +123,7 @@ public:
                 }
 
                 res.prepare_payload();
-                send(std::move(res));
+                std::forward<Send>(send)(std::move(res));
             });
     }
 
@@ -174,7 +174,7 @@ public:
                 }
 
                 res.prepare_payload();
-                send(std::move(res));
+                std::forward<Send>(send)(std::move(res));
             });
     }
 
@@ -230,7 +230,7 @@ public:
                 res.body() = "{}";
                 res.prepare_payload();
 
-                send(std::move(res));
+                std::forward<Send>(send)(std::move(res));
             });
     }
 
@@ -291,7 +291,7 @@ public:
         res.body() = "{}";
         res.prepare_payload();
 
-        send(std::move(res));
+        std::forward<Send>(send)(std::move(res));
     }
 
     template <typename Send>
@@ -326,7 +326,7 @@ public:
         res.body() = json::serialize(result);
         res.prepare_payload();
 
-        send(std::move(res));
+        std::forward<Send>(send)(std::move(res));
     }
 
 private:
@@ -509,7 +509,7 @@ private:
 
         res.body() = json::serialize(body);
         res.prepare_payload();
-        send(std::move(res));
+        std::forward<Send>(send)(std::move(res));
     }
 
     template <typename Send>
@@ -529,7 +529,7 @@ private:
 
         res.body() = json::serialize(body);
         res.prepare_payload();
-        send(std::move(res));
+        std::forward<Send>(send)(std::move(res));
     }
 
     static std::string DirToString(model::Direction dir) {
@@ -556,17 +556,7 @@ private:
         res.body() = json::serialize(obj);
         res.prepare_payload();
 
-        send(std::move(res));
-    }
-
-    static std::string DirToString(model::Direction dir) {
-        switch (dir) {
-            case model::Direction::NORTH: return "U";
-            case model::Direction::SOUTH: return "D";
-            case model::Direction::WEST:  return "L";
-            case model::Direction::EAST:  return "R";
-        }
-        return "U";
+        std::forward<Send>(send)(std::move(res));
     }
 
 private:
