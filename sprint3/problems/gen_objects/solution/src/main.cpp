@@ -113,8 +113,8 @@ int main(int argc, const char* argv[]) {
         http_handler::RequestHandler handler{
             game,
             players,
-            extra_storage,
             args.www_root,
+            extra_storage,
             args.randomize_spawn_points,
             args.tick_period
         };
