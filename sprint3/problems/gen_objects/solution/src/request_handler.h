@@ -308,10 +308,6 @@ public:
             result["buildings"] = buildings_array;
             result["offices"] = offices_array;
 
-            if (auto extra = extra_storage.Get(map->GetId()); true) {
-                result["lootTypes"] = extra;
-            }
-
             http::response<http::string_body> response{
                 http::status::ok, req.version()};
 

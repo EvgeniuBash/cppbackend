@@ -18,7 +18,7 @@ namespace json = boost::json;
 
 class ApiHandler {
 public:
-    ApiHandler(model::Game& game, model::PlayerManager& players, loot_data::ExtraDataStorage& extra_data, bool randomize_spawn)
+    ApiHandler(model::Game& game, model::PlayerManager& players, extra_data::Storage& extra_data, bool randomize_spawn)
         : game_(game)
         , players_(players)
         , extra_data_(extra_data)
@@ -307,8 +307,8 @@ public:
 
         json::object result;
 
-        result["id"] = std::string(map->GetId());
-        result["name"] = map->GetName();
+        const auto& extra = extra_data_.Get(map->GetId());
+        result["lootTypes"] = extra;
 
         json::array roads;
         for (const auto& r : map->GetRoads()) {
@@ -347,14 +347,8 @@ public:
             obj["offsetY"] = o.GetOffset().dy;
             offices.push_back(obj);
         }
-        result["offices"] = offices;
 
-        json::array loot;
-        auto it = extra_data_.Get(map->GetId());
-        for (const auto& item : it) {
-            loot.push_back(item);
-        }
-        result["lootTypes"] = loot;
+        result["offices"] = offices;
 
         http::response<http::string_body> res{http::status::ok, req.version()};
         res.set(http::field::content_type, "application/json");

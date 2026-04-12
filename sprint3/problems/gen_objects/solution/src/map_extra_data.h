@@ -25,7 +25,7 @@ public:
     }
 
 private:
-    std::unordered_map<Map::Id, boost::json::array, TaggedHasher> data_;
+    std::unordered_map<model::Map::Id, boost::json::array, TaggedHasher> data_;
 };
 
 } // namespace extra_data
