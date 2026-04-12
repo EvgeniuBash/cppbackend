@@ -47,6 +47,7 @@ target_link_libraries(game_server_tests
     PRIVATE
     game_lib
     CONAN_PKG::catch2
+    CONAN_PKG::catch2_main
 )
 
 include(CTest)
