@@ -39,7 +39,6 @@ target_link_libraries(game_server
 )
 
 add_executable(game_server_tests
-    tests/main.cpp
     tests/loot_generator_tests.cpp
     tests/loot_tests.cpp
 )
