@@ -568,6 +568,7 @@ private:
     }
 
 private:
+    extra_data::Storage& extra_data_;
     model::Game& game_;
     model::PlayerManager& players_;
     bool randomize_spawn_;

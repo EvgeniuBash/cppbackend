@@ -165,7 +165,7 @@ public:
         : game_(game)
         , players_(players)
         , static_root_(std::move(static_root))
-        , api_handler_(game_, players_, randomize_spawn)
+        , api_handler_(game_, players_, extra_data_, randomize_spawn)
         , randomize_spawn_(randomize_spawn)
         , tick_period_(tick_period)
         {}
@@ -413,6 +413,7 @@ private:
     model::Game& game_;
     model::PlayerManager& players_;
     std::filesystem::path static_root_;
+    extra_data::Storage extra_data_;
     ApiHandler api_handler_;
     bool randomize_spawn_;
     std::optional<int> tick_period_;
