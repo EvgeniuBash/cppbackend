@@ -156,8 +156,9 @@ public:
             };
 
             // ✅ lootTypes
-            if (auto extra = extra_data_.Get(map->GetId()); extra) {
-                result["lootTypes"] = *extra;
+            auto extra = extra_data_.Get(map->GetId());
+            if (!extra.empty()) {
+                result["lootTypes"] = extra;
             }
 
             SendJson(send, req, result);
