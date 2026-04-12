@@ -3,7 +3,7 @@
 #include <boost/json.hpp>
 
 #include "json_loader.h"
-#include "map_extra_data.h"   // 👈 важно
+#include "map_extra_data.h"
 
 namespace json_loader {
 
@@ -49,7 +49,7 @@ model::Office ParseOffice(const json::object& obj) {
 
 model::Game LoadGame(
     const std::filesystem::path& json_path,
-    loot_data::ExtraDataStorage& extra_storage   // 👈 ДОБАВИЛИ
+    extra_data::Storage& extra_storage
 ) {
     model::Game game;
 
@@ -73,22 +73,6 @@ model::Game LoadGame(
     double default_speed = 1.0;
     if (root_obj.contains("defaultDogSpeed")) {
         default_speed = root_obj.at("defaultDogSpeed").as_double();
-    }
-
-    if (root_obj.contains("lootGeneratorConfig")) {
-        auto cfg = root_obj.at("lootGeneratorConfig").as_object();
-
-        double period = cfg.at("period").as_double();
-        double probability = cfg.at("probability").as_double();
-
-        game.SetLootGenerator(
-            loot_gen::LootGenerator{
-                std::chrono::milliseconds(
-                    static_cast<int64_t>(period * 1000)
-                ),
-                probability
-            }
-        );
     }
 
     json::array maps = root_obj.at("maps").as_array();
