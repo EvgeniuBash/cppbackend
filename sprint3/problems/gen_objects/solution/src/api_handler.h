@@ -149,10 +149,10 @@ public:
                 }
             }
 
-            result["lostObjects"] = loot_json;
-
             json::object result;
+
             result["players"] = players_json;
+            result["lostObjects"] = loot_json;
 
             http::response<http::string_body> res{http::status::ok, req.version()};
             res.set(http::field::content_type, "application/json");
