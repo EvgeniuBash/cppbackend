@@ -14,6 +14,7 @@
 #include "ticker.h"
 #include "logger.h"
 #include "logging_request_handler.h"
+#include "map_extra_data.h"
 
 namespace net = boost::asio;
 namespace po = boost::program_options;
@@ -102,8 +103,9 @@ int main(int argc, const char* argv[]) {
         auto args_opt = ParseCommandLine(argc, argv);
         if (!args_opt) return 0; 
         const Args& args = *args_opt;
+        extra_data::Storage extra_storage;
        
-        model::Game game = json_loader::LoadGame(args.config_file.string());
+        model::Game game = json_loader::LoadGame(args.config_file.string(), extra_storage);
         model::PlayerManager players;
 
         net::io_context ioc(1);
@@ -111,6 +113,7 @@ int main(int argc, const char* argv[]) {
         http_handler::RequestHandler handler{
             game,
             players,
+            extra_storage,
             args.www_root,
             args.randomize_spawn_points,
             args.tick_period

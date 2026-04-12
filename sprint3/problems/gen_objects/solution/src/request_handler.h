@@ -160,11 +160,13 @@ public:
     explicit RequestHandler(model::Game& game,
                             model::PlayerManager& players,
                             std::filesystem::path static_root,
+                            extra_data::Storage& extra_data,
                             bool randomize_spawn,
                             std::optional<int> tick_period)
         : game_(game)
         , players_(players)
         , static_root_(std::move(static_root))
+        , extra_data_(extra_data)
         , api_handler_(game_, players_, extra_data_, randomize_spawn)
         , randomize_spawn_(randomize_spawn)
         , tick_period_(tick_period)
