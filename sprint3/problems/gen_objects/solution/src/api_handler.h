@@ -96,7 +96,7 @@ public:
 
     template <typename Send>
     void HandlePlayers(const http::request<http::string_body>& req, Send&& send) {
-        ExecuteAuthorized(req, send, [&](model::Player* player) {
+        ExecuteAuthorized(req, send, [this](model::Player* player) {
             json::object players_json;
             for (auto* p : players_.GetPlayersByMap(player->GetMapId())) {
                 players_json[std::to_string(p->GetId())] = {{"name", p->GetName()}};
@@ -123,7 +123,7 @@ public:
             return;
         }
 
-        ExecuteAuthorized(req, send, [&](model::Player* player) {
+        ExecuteAuthorized(req, send, [this](model::Player* player) {
             json::object players_json;
 
             for (auto* p : players_.GetPlayersByMap(player->GetMapId())) {
@@ -179,7 +179,7 @@ public:
             return;
         }
 
-        ExecuteAuthorized(req, send, [&](model::Player* player) {
+        ExecuteAuthorized(req, send, [this](model::Player* player) {
             json::value body;
             try {
                 body = json::parse(req.body());
@@ -568,9 +568,9 @@ private:
     }
 
 private:
-    extra_data::Storage& extra_data_;
     model::Game& game_;
     model::PlayerManager& players_;
+    extra_data::Storage& extra_data_;
     bool randomize_spawn_;
 };
 
