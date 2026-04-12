@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include "model.h"
+#include "map_extra_data.h" 
 
 namespace json_loader {
 
