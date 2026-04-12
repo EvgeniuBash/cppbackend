@@ -39,6 +39,7 @@ target_link_libraries(game_server
 )
 
 add_executable(game_server_tests
+    tests/main.cpp
     tests/loot_generator_tests.cpp
     tests/loot_tests.cpp
 )
@@ -47,7 +48,6 @@ target_link_libraries(game_server_tests
     PRIVATE
     game_lib
     CONAN_PKG::catch2
-    CONAN_PKG::catch2_main
 )
 
 include(CTest)
