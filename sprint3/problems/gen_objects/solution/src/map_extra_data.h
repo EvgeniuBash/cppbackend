@@ -12,7 +12,7 @@ public:
     }
 
     const boost::json::array& Get(const model::Map::Id& id) const {
-        static const boost::json::array empty;
+        static boost::json::array empty;
 
         if (auto it = data_.find(id); it != data_.end()) {
             return it->second;

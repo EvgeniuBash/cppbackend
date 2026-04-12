@@ -102,7 +102,7 @@ public:
     template <typename Send>
     void HandlePlayers(const http::request<http::string_body>& req, Send&& send) {
         ExecuteAuthorized(req, send,
-            [this, &req, &send](model::Player* player) {
+            [this, req, send](model::Player* player) {
 
                 json::object players_json;
 
@@ -138,7 +138,7 @@ public:
         }
 
         ExecuteAuthorized(req, send,
-            [this, &req, &send](model::Player* player) {
+            [this, req, send](model::Player* player) {
 
                 json::object players_json;
 
@@ -193,7 +193,7 @@ public:
         }
 
         ExecuteAuthorized(req, send,
-            [this, &req, &send](model::Player* player) {
+            [this, req, send](model::Player* player) {
 
                 json::value body;
                 try {
