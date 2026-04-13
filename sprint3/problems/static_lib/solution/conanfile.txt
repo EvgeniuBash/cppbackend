@@ -7,4 +7,3 @@ cmake_multi
 
 [options]
 boost:without_test=True
-boost:without_unit_test_framework=True
