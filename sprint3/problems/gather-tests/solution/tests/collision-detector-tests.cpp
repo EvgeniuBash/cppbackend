@@ -6,6 +6,7 @@
 #include <cmath>
 #include <sstream>
 
+using Catch::Approx;
 using namespace collision_detector;
 
 namespace Catch {
