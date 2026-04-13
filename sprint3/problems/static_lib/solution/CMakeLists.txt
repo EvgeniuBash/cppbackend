@@ -23,9 +23,7 @@ target_include_directories(game_lib PUBLIC
 )
 
 target_link_libraries(game_lib PUBLIC
-    CONAN_PKG::boost_json
-    CONAN_PKG::boost_system
-    CONAN_PKG::boost_filesystem
+    CONAN_PKG::boost
     Threads::Threads
 )
 
