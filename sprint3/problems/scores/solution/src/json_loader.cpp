@@ -18,10 +18,9 @@ model::Road ParseRoad(const json::object& road_obj) {
     if (road_obj.contains("x1")) {
         int x1 = road_obj.at("x1").as_int64();
         return model::Road(model::Road::HORIZONTAL, {x0, y0}, x1);
-    } else {
-        int y1 = road_obj.at("y1").as_int64();
-        return model::Road(model::Road::VERTICAL, {x0, y0}, y1);
-    }
+    } 
+    int y1 = road_obj.at("y1").as_int64();
+    return model::Road(model::Road::VERTICAL, {x0, y0}, y1);
 }
 
 model::Building ParseBuilding(const json::object& obj) {

@@ -10,6 +10,18 @@
 #include <string>
 #include <optional>
 
+namespace Endpoints {
+
+constexpr std::string_view MAPS = "/api/v1/maps";
+constexpr std::string_view MAP_PREFIX = "/api/v1/maps/";
+constexpr std::string_view GAME_STATE = "/api/v1/game/state";
+constexpr std::string_view GAME_ACTION = "/api/v1/game/player/action";
+constexpr std::string_view GAME_TICK = "/api/v1/game/tick";
+constexpr std::string_view GAME_JOIN = "/api/v1/game/join";
+constexpr std::string_view GAME_PLAYERS = "/api/v1/game/players";
+
+}
+
 namespace http_handler {
 
 namespace http = boost::beast::http;
@@ -35,17 +47,17 @@ public:
 
         std::string target = std::string(req.target());
 
-        if (target == "/api/v1/game/join") {
+        if (target == Endpoints::GAME_JOIN) {
             api_handler_.HandleJoin(req, send);
             return;
         }
 
-        if (target == "/api/v1/game/players") {
+        if (target == Endpoints::GAME_PLAYERS) {
             api_handler_.HandlePlayers(req, send);
             return;
         }
 
-        if (target == "/api/v1/game/state") {
+        if (target == Endpoints::GAME_STATE) {
             if (req.method() != http::verb::get && req.method() != http::verb::head) {
                 SendError(send, req, http::status::method_not_allowed);
                 return;
@@ -54,12 +66,12 @@ public:
             return;
         }
 
-        if (target == "/api/v1/game/player/action") {
+        if (target == Endpoints::GAME_ACTION) {
             api_handler_.HandleAction(req, send);
             return;
         }
 
-        if (target == "/api/v1/game/tick") {
+        if (target == Endpoints::GAME_TICK) {
             if (tick_period_) {
                 SendError(send, req, http::status::bad_request);
                 return;
@@ -68,7 +80,7 @@ public:
             return;
         }
 
-        if (target == "/api/v1/maps") {
+        if (target == Endpoints::MAPS) {
             if (req.method() != http::verb::get && req.method() != http::verb::head) {
                 SendError(send, req, http::status::method_not_allowed);
                 return;
@@ -87,7 +99,7 @@ public:
             return;
         }
 
-        if (target.starts_with("/api/v1/maps/")) {
+        if (target.starts_with(Endpoints::MAP_PREFIX)) {
             std::string id = target.substr(13);
 
             const model::Map* map = game_.FindMap(model::Map::Id{id});

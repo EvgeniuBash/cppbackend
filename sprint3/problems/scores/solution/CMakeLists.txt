@@ -31,8 +31,6 @@ target_link_libraries(game_lib PUBLIC
 add_executable(game_server
     src/main.cpp
     src/http_server.cpp
-    src/request_handler.cpp
-    src/api_handler.cpp
 )
 
 target_link_libraries(game_server

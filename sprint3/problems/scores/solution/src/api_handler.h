@@ -289,7 +289,7 @@ public:
             auto players = players_.GetPlayersByMap(map.GetId());
 
             for (auto* player : players) {
-                player->SetPrevPosition(player->GetPosition());  // ❗ обязательно
+                player->SetPrevPosition(player->GetPosition());
                 MovePlayerAlongRoad(player, dt);
             }
 
@@ -324,11 +324,12 @@ public:
                     return {
                         {p->GetPrevPosition().x, p->GetPrevPosition().y},
                         {p->GetPosition().x, p->GetPosition().y},
-                        0.3
+                        PLAYER_RADIUS
                     };
                 }
 
             private:
+                static constexpr double PLAYER_RADIUS = 0.3;
                 const std::vector<model::Player*>& players_;
                 const std::vector<model::LostObject>& items_;
             };
@@ -351,7 +352,7 @@ public:
                 game_.RemoveLostObject(item.id);
             }
 
-            const double BASE_RADIUS = 0.55;
+            constexpr double BASE_RADIUS = 0.55;
 
             for (auto* player : players) {
                 for (const auto& office : map.GetOffices()) {
@@ -470,6 +471,7 @@ private:
         };
 
         for (const auto& road : map->GetRoads()) {
+        constexpr double ROAD_HALF_WIDTH = 0.4;
         double min_x, max_x, min_y, max_y;
 
         if (road.IsHorizontal()) {
@@ -477,19 +479,19 @@ private:
             const double left = static_cast<double>(std::min(road.GetStart().x, road.GetEnd().x));
             const double right = static_cast<double>(std::max(road.GetStart().x, road.GetEnd().x));
 
-            min_x = left - 0.4;
-            max_x = right + 0.4;
-            min_y = y - 0.4;
-            max_y = y + 0.4;
+            min_x = left - ROAD_HALF_WIDTH;
+            max_x = right + ROAD_HALF_WIDTH;
+            min_y = y - ROAD_HALF_WIDTH;
+            max_y = y + ROAD_HALF_WIDTH;
         } else {
             const double x = static_cast<double>(road.GetStart().x);
             const double top = static_cast<double>(std::min(road.GetStart().y, road.GetEnd().y));
             const double bottom = static_cast<double>(std::max(road.GetStart().y, road.GetEnd().y));
 
-            min_x = x - 0.4;
-            max_x = x + 0.4;
-            min_y = top - 0.4;
-            max_y = bottom + 0.4;
+            min_x = x - ROAD_HALF_WIDTH;
+            max_x = x + ROAD_HALF_WIDTH;
+            min_y = top - ROAD_HALF_WIDTH;
+            max_y = bottom + ROAD_HALF_WIDTH;
         }
 
         if (!(pos.x >= min_x && pos.x <= max_x &&
@@ -579,14 +581,14 @@ private:
     }
 
     template <typename Send>
-    void sendBadRequest(const http::request<http::string_body>& req,
+    void SendBadRequest(const http::request<http::string_body>& req,
                         Send&& send,
                         const std::string& msg) {
         sendError(req, send, http::status::bad_request, "invalidArgument", msg);
     }
 
     template <typename Send>
-    void sendNotFound(const http::request<http::string_body>& req,
+    void SendNotFound(const http::request<http::string_body>& req,
                       Send&& send,
                       const std::string& code,
                       const std::string& msg) {
@@ -594,7 +596,7 @@ private:
     }
 
     template <typename Send>
-    void sendUnauthorized(const http::request<http::string_body>& req,
+    void SendUnauthorized(const http::request<http::string_body>& req,
                           Send&& send,
                           const std::string& code,
                           const std::string& msg) {
@@ -602,7 +604,7 @@ private:
     }
 
     template <typename Send>
-    void sendMethodNotAllowed(const http::request<http::string_body>& req,
+    void SendMethodNotAllowed(const http::request<http::string_body>& req,
                               Send&& send,
                               const std::string& allow) {
 
@@ -621,7 +623,7 @@ private:
     }
 
     template <typename Send>
-    void sendError(const http::request<http::string_body>& req,
+    void SendError(const http::request<http::string_body>& req,
                    Send&& send,
                    http::status status,
                    const std::string& code,
@@ -651,7 +653,7 @@ private:
     }
 
     template <typename Send>
-    void sendInvalidArgument(const http::request<http::string_body>& req,
+    void SendInvalidArgument(const http::request<http::string_body>& req,
                          Send&& send,
                          const std::string& message) {
         json::object obj;
