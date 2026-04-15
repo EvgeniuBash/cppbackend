@@ -153,13 +153,15 @@ public:
                         });
                     }
 
-                    players_json[std::to_string(p->GetId())] = json::object{
-                        {"pos", json::array{p->GetPosition().x, p->GetPosition().y}},
-                        {"speed", json::array{p->GetSpeed().vx, p->GetSpeed().vy}},
-                        {"dir", DirToString(p->GetDirection())},
-                        {"bag", bag}
-                        {"score", p->GetScore()}
-                    };
+                   json::object player_obj;
+
+                   player_obj["pos"] = {p->GetPosition().x, p->GetPosition().y};
+                   player_obj["speed"] = {p->GetSpeed().vx, p->GetSpeed().vy};
+                   player_obj["dir"] = DirToString(p->GetDirection());
+                   player_obj["bag"] = bag;
+                   player_obj["score"] = p->GetScore();
+
+                   players_json[std::to_string(p->GetId())] = std::move(player_obj);
                 }
 
                 json::object loot_json;
@@ -359,11 +361,15 @@ public:
                     double dist2 = dx*dx + dy*dy;
 
                     if (dist2 <= BASE_RADIUS * BASE_RADIUS) {
+                        auto loot_types = extra_data_.Get(map.GetId()).as_array();
 
                         int total_score = 0;
 
                         for (const auto& item : player->GetBag()) {
-                            total_score += extra_data_.Get(map.GetId())[item.type].value;
+                           total_score += loot_types[item.type]
+                           .as_object()
+                           .at("value")
+                           .as_int64();
                         }
 
                         player->AddScore(total_score);
