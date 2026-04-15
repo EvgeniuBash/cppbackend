@@ -361,7 +361,7 @@ public:
                     double dist2 = dx*dx + dy*dy;
 
                     if (dist2 <= BASE_RADIUS * BASE_RADIUS) {
-                        auto loot_types = extra_data_.Get(map.GetId()).as_array();
+                        auto loot_types = extra_data_.Get(map.GetId());
 
                         int total_score = 0;
 
