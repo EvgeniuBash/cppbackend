@@ -1,11 +1,15 @@
 FROM ubuntu:22.04
 
+RUN apt-get update && apt-get install -y \
+    g++ \
+    cmake \
+    libboost-all-dev
+
 WORKDIR /app
 
-COPY build/game_server /app/game_server
-COPY data /app/data
-COPY static /app/static
+COPY . .
 
-EXPOSE 8080
+RUN cmake -B build
+RUN cmake --build build
 
-ENTRYPOINT ["/app/game_server"]
+CMD ["./build/game_server", "--config-file", "/app/data/config.json", "--www-root", "/app/static/"]
