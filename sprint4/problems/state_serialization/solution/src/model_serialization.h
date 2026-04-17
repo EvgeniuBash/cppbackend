@@ -1,5 +1,4 @@
 #include <boost/serialization/vector.hpp>
-#include <boost/serialization/string.hpp>
 
 #include "model.h"
 
@@ -25,16 +24,6 @@ template <typename Archive>
 void serialize(Archive& ar, FoundObject& obj, [[maybe_unused]] const unsigned version) {
     ar&(*obj.id);
     ar&(obj.type);
-}
-
-template <typename Archive>
-void serialize(Archive& ar, Direction& dir, [[maybe_unused]] const unsigned version) {
-    int value = static_cast<int>(dir);
-    ar & value;
-
-    if constexpr (Archive::is_loading::value) {
-        dir = static_cast<Direction>(value);
-    }
 }
 
 }  // namespace model
