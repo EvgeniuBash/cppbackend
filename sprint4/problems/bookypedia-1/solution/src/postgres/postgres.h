@@ -7,27 +7,28 @@
 
 namespace postgres {
 
-class BookRepositoryImpl : public domain::BookRepository {
+class AuthorRepositoryImpl : public domain::AuthorRepository {
 public:
-    explicit BookRepositoryImpl(pqxx::connection& connection)
-        : connection_{connection} {
-    }
+    explicit AuthorRepositoryImpl(pqxx::connection& conn)
+        : connection_(conn) {}
 
-    void Save(const domain::Book& book) override;
+    void Save(const domain::Author& author) override;
+    std::vector<domain::Author> GetAll() const override;
 
 private:
     pqxx::connection& connection_;
 };
 
-class AuthorRepositoryImpl : public domain::AuthorRepository {
+class BookRepositoryImpl : public domain::BookRepository {
 public:
-    explicit AuthorRepositoryImpl(pqxx::connection& connection)
-        : connection_{connection} {
-    }
+    explicit BookRepositoryImpl(pqxx::connection& conn)
+        : connection_(conn) {}
 
-    void Save(const domain::Author& author) override;
+    void Save(const domain::Book& book) override;
 
-    std::vector<domain::Author> GetAll() const;
+    std::vector<domain::Book> GetAll() const override;
+
+    std::vector<domain::Book> GetByAuthor(const domain::AuthorId& author_id) const override;
 
 private:
     pqxx::connection& connection_;
@@ -42,25 +43,13 @@ public:
     }
 
     BookRepositoryImpl& GetBooks() & {
-    return books_;
+        return books_;
     }
 
 private:
     pqxx::connection connection_;
     AuthorRepositoryImpl authors_{connection_};
     BookRepositoryImpl books_{connection_};
-};
-
-class BookRepositoryImpl : public domain::BookRepository {
-public:
-    explicit BookRepositoryImpl(pqxx::connection& connection)
-        : connection_{connection} {
-    }
-
-    void Save(const domain::Book& book) override;
-
-private:
-    pqxx::connection& connection_;
 };
 
 }  // namespace postgres
