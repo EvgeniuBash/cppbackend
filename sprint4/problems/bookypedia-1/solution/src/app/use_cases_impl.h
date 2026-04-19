@@ -1,5 +1,6 @@
 #pragma once
 #include "../domain/author_fwd.h"
+#include "../domain/book.h"
 #include "use_cases.h"
 
 namespace app {
@@ -16,6 +17,7 @@ public:
 
 private:
     domain::AuthorRepository& authors_;
+    domain::BookRepository& books_;
 };
 
 }  // namespace app
