@@ -15,6 +15,16 @@ public:
 
     void AddAuthor(const std::string& name) override;
 
+    void AddBook(int pub_year,
+             const std::string& title,
+             const std::string& author_id) override;
+
+    std::vector<std::pair<std::string, std::string>> GetAuthors() const override;
+
+    std::vector<std::pair<std::string, int>> GetBooks() const override;
+
+    std::vector<std::pair<std::string, int>> GetAuthorBooks(const std::string& author_id) const override;
+
 private:
     domain::AuthorRepository& authors_;
     domain::BookRepository& books_;
