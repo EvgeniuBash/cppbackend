@@ -1,6 +1,7 @@
 #include "postgres.h"
 
 #include <pqxx/zview.hxx>
+#include <pqxx/pqxx>
 
 namespace postgres {
 
@@ -50,7 +51,8 @@ VALUES ($1, $2, $3, $4);
         book.GetId().ToString(),
         book.GetAuthorId().ToString(),
         book.GetTitle(),
-        book.GetPubYear());
+        book.GetPubYear()
+    );
     work.commit();
 }
 
