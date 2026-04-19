@@ -7,6 +7,18 @@
 
 namespace postgres {
 
+class BookRepositoryImpl : public domain::BookRepository {
+public:
+    explicit BookRepositoryImpl(pqxx::connection& connection)
+        : connection_{connection} {
+    }
+
+    void Save(const domain::Book& book) override;
+
+private:
+    pqxx::connection& connection_;
+};
+
 class AuthorRepositoryImpl : public domain::AuthorRepository {
 public:
     explicit AuthorRepositoryImpl(pqxx::connection& connection)

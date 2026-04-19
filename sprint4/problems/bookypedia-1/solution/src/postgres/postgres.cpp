@@ -20,8 +20,12 @@ ON CONFLICT (id) DO UPDATE SET name=$2;
 }
 
 Database::Database(pqxx::connection connection)
-    : connection_{std::move(connection)} {
+    : connection_{std::move(connection)}
+    , authors_{connection_}
+    , books_{connection_}
+{
     pqxx::work work{connection_};
+
     work.exec(R"(
 CREATE TABLE IF NOT EXISTS authors (
     id UUID CONSTRAINT author_id_constraint PRIMARY KEY,
@@ -29,10 +33,7 @@ CREATE TABLE IF NOT EXISTS authors (
 );
 )"_zv);
 
-    work.commit();
-}
-
-work.exec(R"(
+    work.exec(R"(
 CREATE TABLE IF NOT EXISTS books (
     id UUID PRIMARY KEY,
     author_id UUID NOT NULL REFERENCES authors(id),
@@ -40,6 +41,9 @@ CREATE TABLE IF NOT EXISTS books (
     publication_year INTEGER NOT NULL
 );
 )"_zv);
+
+    work.commit();
+}
 
 void BookRepositoryImpl::Save(const domain::Book& book) {
     pqxx::work work{connection_};
