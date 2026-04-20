@@ -48,7 +48,7 @@ std::vector<std::pair<std::string, int>> UseCasesImpl::GetBooks() const {
 
 std::vector<std::pair<std::string, int>> UseCasesImpl::GetAuthorBooks(const std::string& author_id) const {
     std::vector<std::pair<std::string, int>> result;
-    for (const auto& b : books_.->GetByAuthor(domain::AuthorId::FromString(author_id))) {
+    for (const auto& b : books_->GetByAuthor(domain::AuthorId::FromString(author_id))) {
         result.emplace_back(b.GetTitle(), b.GetPubYear());
     }
     return result;
