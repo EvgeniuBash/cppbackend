@@ -26,7 +26,7 @@ public:
 
 private:
     domain::AuthorRepository& authors_;
-    domain::BookRepository& books_ = nullptr;;
+    domain::BookRepository* books_ = nullptr;;
 };
 
 }  // namespace app
