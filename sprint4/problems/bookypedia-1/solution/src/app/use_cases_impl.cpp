@@ -20,11 +20,13 @@ void UseCasesImpl::AddAuthor(const std::string& name) {
 }
 
 void UseCasesImpl::AddBook(int pub_year, const std::string& title, const std::string& author_id) {
-    books_.Save({
+ if (books_) {
+     books_->Save({
         domain::BookId::New(),
         domain::AuthorId::FromString(author_id),
         title,
         pub_year});
+    }
 }
 
 std::vector<std::pair<std::string, std::string>> UseCasesImpl::GetAuthors() const {
@@ -37,7 +39,8 @@ std::vector<std::pair<std::string, std::string>> UseCasesImpl::GetAuthors() cons
 
 std::vector<std::pair<std::string, int>> UseCasesImpl::GetBooks() const {
     std::vector<std::pair<std::string, int>> result;
-    for (const auto& b : books_.GetAll()) {
+    if (!books_) return {};
+    for (const auto& b : books_->GetAll() {
         result.emplace_back(b.GetTitle(), b.GetPubYear());
     }
     return result;
