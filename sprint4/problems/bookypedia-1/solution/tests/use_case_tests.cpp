@@ -13,7 +13,7 @@ struct MockAuthorRepository : domain::AuthorRepository {
     }
 
     std::vector<domain::Author> GetAll() const override {
-    return authors_;
+    return authors;
 }
 
 };
