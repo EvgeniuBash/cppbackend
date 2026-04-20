@@ -8,10 +8,9 @@ namespace app {
 class UseCasesImpl : public UseCases {
 public:
     explicit UseCasesImpl(domain::AuthorRepository& authors,
-             domain::BookRepository& books)
-        : authors_{authors}
-        , books_{books} {
-    }
+                          domain::BookRepository& books);
+
+    explicit UseCasesImpl(domain::AuthorRepository& authors);
 
     void AddAuthor(const std::string& name) override;
 
@@ -27,7 +26,7 @@ public:
 
 private:
     domain::AuthorRepository& authors_;
-    domain::BookRepository& books_;
+    domain::BookRepository& books_ = nullptr;
 };
 
 }  // namespace app
