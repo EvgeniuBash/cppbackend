@@ -6,14 +6,14 @@
 namespace {
 
 struct MockAuthorRepository : domain::AuthorRepository {
-    std::vector<domain::Author> saved_authors;
+    std::vector<domain::Author> authors_;
 
     void Save(const domain::Author& author) override {
         saved_authors.emplace_back(author);
     }
 
     std::vector<domain::Author> GetAll() const override {
-    return authors;
+    return authors_;
 }
 
 };
