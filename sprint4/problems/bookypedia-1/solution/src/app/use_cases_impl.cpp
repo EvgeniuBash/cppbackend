@@ -10,7 +10,10 @@ UseCasesImpl::UseCasesImpl(domain::AuthorRepository& authors,
     : authors_(authors)
     , books_(&books) {}
 
-}
+
+UseCasesImpl::UseCasesImpl(domain::AuthorRepository& authors)
+    : authors_(authors)
+    , books_(nullptr) {}
 
 void UseCasesImpl::AddAuthor(const std::string& name) {
     authors_.Save({AuthorId::New(), name});
