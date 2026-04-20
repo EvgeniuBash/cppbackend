@@ -11,6 +11,11 @@ struct MockAuthorRepository : domain::AuthorRepository {
     void Save(const domain::Author& author) override {
         saved_authors.emplace_back(author);
     }
+
+    std::vector<domain::Author> GetAll() const override {
+    return authors_;
+}
+
 };
 
 struct Fixture {

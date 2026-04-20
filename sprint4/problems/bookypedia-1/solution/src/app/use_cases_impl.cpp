@@ -5,6 +5,13 @@
 namespace app {
 using namespace domain;
 
+UseCasesImpl::UseCasesImpl(domain::AuthorRepository& authors,
+                           domain::BookRepository& books)
+    : authors_(authors)
+    , books_(&books) {}
+
+}
+
 void UseCasesImpl::AddAuthor(const std::string& name) {
     authors_.Save({AuthorId::New(), name});
 }
