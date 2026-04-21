@@ -75,14 +75,22 @@ bool View::AddAuthor(std::istream& cmd_input) const {
 
 bool View::AddBook(std::istream& cmd_input) const {
     try {
-        if (auto params = GetBookParams(cmd_input)) {
-            
-            std::string tags_input;
-            std::getline(input_, tags_input);
-            auto tags = util::NormalizeTags(tags_input);
-            use_cases_.AddBook(year, title, author_name, tags);
-            output_ << "Enter tags (comma separated):" << std::endl;
-        }
+        std::string title;
+        std::getline(cmd_input, title);
+
+        std::string author_name;
+        std::getline(cmd_input, author_name);
+
+        std::string year_str;
+        std::getline(cmd_input, year_str);
+        int year = std::stoi(year_str);
+
+        std::string tags_input;
+        std::getline(cmd_input, tags_input);
+
+        auto tags = util::NormalizeTags(tags_input);
+
+        use_cases_.AddBook(year, title, author_name, tags);
     } catch (...) {
         output_ << "Failed to add book" << std::endl;
     }

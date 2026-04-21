@@ -24,7 +24,7 @@ void UseCasesImpl::AddBook(int year,
                           const std::string& author_name,
                           const std::vector<std::string>& tags) {
 
-    auto author = author_repo_.FindByName(author_name);
+    auto author = authors_.FindByName(author_name);
 
     if (!author) {
         throw std::runtime_error("Author not found");
@@ -37,16 +37,16 @@ void UseCasesImpl::AddBook(int year,
         year
     };
 
-    book_repo_.Save(book);
+    books_.Save(book);
     book_repo_.SaveTags(book.GetId(), tags);
 }
 
 void UseCasesImpl::DeleteBook(const domain::BookId& id) {
-    books_->Delete(id);
+    books_.Delete(id);
 }
 
 void UseCasesImpl::DeleteAuthor(const domain::AuthorId& id) {
-    authors_->Delete(id);
+    authors_.Delete(id);
 }
 
 std::vector<std::pair<std::string, std::string>> UseCasesImpl::GetAuthors() const {
