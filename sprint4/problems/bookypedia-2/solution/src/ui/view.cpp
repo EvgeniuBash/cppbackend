@@ -102,57 +102,8 @@ bool View::ShowAuthors() const {
     return true;
 }
 
-bool View::ShowBook(std::istream& cmd_input) const {
-    try {
-        std::string title;
-        std::getline(cmd_input, title);
-        boost::algorithm::trim(title);
-
-        if (books.empty()) {
-            return true;
-        }
-
-        int index = 0;
-
-        if (books.size() > 1) {
-            for (size_t i = 0; i < books.size(); ++i) {
-                output_ << i + 1 << " "
-                        << books[i].title
-                        << " by "
-                        << books[i].author
-                        << ", "
-                        << books[i].publication_year
-                        << std::endl;
-            }
-
-            output_ << "Enter the book # or empty line to cancel:" << std::endl;
-
-            std::string line;
-            std::getline(input_, line);
-
-            if (line.empty()) return true;
-
-            index = std::stoi(line) - 1;
-        }
-
-        const auto& book = books[index];
-
-        output_ << "Title: " << book.title << std::endl;
-        output_ << "Author: " << book.author << std::endl;
-        output_ << "Publication year: " << book.publication_year << std::endl;
-
-        if (!tags.empty()) {
-            output_ << "Tags: ";
-            for (size_t i = 0; i < tags.size(); ++i) {
-                if (i > 0) output_ << ", ";
-                output_ << tags[i];
-            }
-            output_ << std::endl;
-        }
-
-    } catch (...) {
-    }
-
+bool View::ShowBook(std::istream&) const {
+    output_ << "Not implemented yet" << std::endl;
     return true;
 }
 
@@ -168,24 +119,8 @@ bool View::ShowAuthorBooks() const {
     return true;
 }
 
-bool View::DeleteBook(std::istream& cmd_input) const {
-    try {
-        auto books = use_cases_.GetBooks();
-
-        int index;
-        cmd_input >> index;
-        cmd_input.ignore();
-
-        if (index <= 0 || index > books.size()) {
-            return true;
-        }
-
-        use_cases_.DeleteBook(books[index - 1].first);
-
-    } catch (...) {
-        output_ << "Failed to delete book" << std::endl;
-    }
-
+bool View::DeleteBook(std::istream&) const {
+    output_ << "Not implemented yet" << std::endl;
     return true;
 }
 
