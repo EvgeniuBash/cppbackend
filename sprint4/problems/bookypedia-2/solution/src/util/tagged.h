@@ -1,0 +1,76 @@
+#pragma once
+#include <compare>
+#include <sstream>
+#include <set>
+#include <vector>
+#include <algorithm>
+
+namespace util {
+
+std::string NormalizeSpaces(std::string s) {
+    std::stringstream ss(s);
+    std::string word, result;
+    while (ss >> word) {
+        if (!result.empty()) result += " ";
+        result += word;
+    }
+    return result;
+}
+
+std::vector<std::string> NormalizeTags(const std::string& input) {
+    std::stringstream ss(input);
+    std::string tag;
+    std::set<std::string> unique;
+
+    while (std::getline(ss, tag, ',')) {
+        boost::algorithm::trim(tag);
+        tag = NormalizeSpaces(tag);
+
+        if (!tag.empty()) {
+            unique.insert(tag);
+        }
+    }
+
+    return {unique.begin(), unique.end()};
+}
+
+
+template <typename Value, typename Tag>
+class Tagged {
+public:
+    using ValueType = Value;
+    using TagType = Tag;
+
+    explicit Tagged(Value&& v)
+        : value_(std::move(v)) {
+    }
+    explicit Tagged(const Value& v)
+        : value_(v) {
+    }
+
+    const Value& operator*() const {
+        return value_;
+    }
+
+    Value& operator*() {
+        return value_;
+    }
+
+    // Так в C++20 можно объявить оператор сравнения Tagged-типов
+    // Будет просто вызван соответствующий оператор для поля value_
+    auto operator<=>(const Tagged<Value, Tag>&) const = default;
+
+private:
+    Value value_;
+};
+
+// Хешер для Tagged-типа, чтобы Tagged-объекты можно было хранить в unordered-контейнерах
+template <typename TaggedValue>
+struct TaggedHasher {
+    size_t operator()(const TaggedValue& value) const {
+        // Возвращает хеш значения, хранящегося внутри value
+        return std::hash<typename TaggedValue::ValueType>{}(*value);
+    }
+};
+
+}  // namespace util
