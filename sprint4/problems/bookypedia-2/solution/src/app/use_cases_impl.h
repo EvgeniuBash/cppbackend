@@ -7,6 +7,9 @@ namespace app {
 
 class UseCasesImpl : public UseCases {
 public:
+    explicit UseCasesImpl(domain::AuthorRepository& authors)
+    : authors_(authors), books_(dummy_books_) {}
+
     explicit UseCasesImpl(domain::AuthorRepository& authors,
                           domain::BookRepository& books);
 
@@ -25,9 +28,18 @@ public:
 
     std::vector<std::pair<std::string, int>> GetAuthorBooks(const std::string& author_id) const override;
 
+    std::vector<BookInfo> GetBooksWithAuthors() const override;
+
 private:
     domain::AuthorRepository& authors_;
     domain::BookRepository& books_;
+
+    class DummyBookRepo : public domain::BookRepository {
+    public:
+        void Save(const domain::Book&) override {}
+        std::vector<domain::Book> GetAll() const override { return {}; }
+        std::vector<domain::Book> GetByAuthor(const domain::AuthorId&) const override { return {}; }
+    } dummy_books_;
 };
 
 }  // namespace app

@@ -15,6 +15,12 @@ void UseCasesImpl::AddAuthor(const std::string& name) {
     authors_.Save({AuthorId::New(), name});
 }
 
+void UseCasesImpl::DeleteBook(const domain::BookId&) {
+}
+
+void UseCasesImpl::DeleteAuthor(const domain::AuthorId&) {
+}
+
 void UseCasesImpl::AddBook(int year,
                           const std::string& title,
                           const std::string& author_name,
@@ -67,6 +73,10 @@ std::vector<std::pair<std::string, int>> UseCasesImpl::GetAuthorBooks(const std:
         result.emplace_back(b.GetTitle(), b.GetPubYear());
     }
     return result;
+}
+
+std::vector<app::BookInfo> UseCasesImpl::GetBooksWithAuthors() const {
+    return {};
 }
 
 }  // namespace app
