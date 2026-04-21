@@ -1,11 +1,13 @@
 #pragma once
+
+#include <boost/algorithm/string.hpp>
+
 #include <compare>
 #include <sstream>
 #include <set>
 #include <vector>
 #include <algorithm>
 
-#include <boost/algorithm/string.hpp>
 
 namespace util {
 

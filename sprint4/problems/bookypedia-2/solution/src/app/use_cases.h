@@ -3,6 +3,9 @@
 #include <string>
 #include <vector>
 
+#include "../domain/book.h"
+#include "../domain/author.h"
+
 namespace app {
 
 struct BookInfo {

@@ -76,14 +76,12 @@ bool View::AddAuthor(std::istream& cmd_input) const {
 bool View::AddBook(std::istream& cmd_input) const {
     try {
         if (auto params = GetBookParams(cmd_input)) {
-            auto tags = NormalizeTags(tags_input);
-            use_cases_.AddBook(params->publication_year, params->title, params->author_id, tags);
-            output_ << "Enter tags (comma separated):" << std::endl;
-
+            
             std::string tags_input;
             std::getline(input_, tags_input);
-
-            auto tags = NormalizeTags(tags_input);
+            auto tags = util::NormalizeTags(tags_input);
+            use_cases_.AddBook(year, title, author_name, tags);
+            output_ << "Enter tags (comma separated):" << std::endl;
         }
     } catch (...) {
         output_ << "Failed to add book" << std::endl;
