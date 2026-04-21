@@ -112,35 +112,6 @@ std::vector<domain::Author> AuthorRepositoryImpl::GetAll() const {
     return result;
 }
 
-void SaveTags(const domain::BookId& book_id,
-              const std::vector<std::string>& tags) {
-    pqxx::work work{connection_};
-
-    for (const auto& tag : tags) {
-        work.exec_params(
-            "INSERT INTO book_tags (book_id, tag) VALUES ($1, $2)",
-            book_id.ToString(), tag);
-    }
-
-    work.commit();
-}
-
-std::vector<std::string> GetTags(const domain::BookId& book_id) const {
-    pqxx::work work{connection_};
-
-    auto res = work.exec_params(
-        "SELECT tag FROM book_tags WHERE book_id = $1 ORDER BY tag",
-        book_id.ToString());
-
-    std::vector<std::string> tags;
-
-    for (const auto& row : res) {
-        tags.push_back(row[0].c_str());
-    }
-
-    return tags;
-}
-
 void BookRepositoryImpl::Delete(const domain::BookId& id) {
     pqxx::work work{connection_};
 
@@ -169,40 +140,5 @@ void AuthorRepositoryImpl::Delete(const domain::AuthorId& id) {
     work.commit();
 }
 
-void BookRepositoryImpl::Update(const domain::Book& book) {
-    pqxx::work work{connection_};
-
-    work.exec_params(
-        "UPDATE books SET title=$1, publication_year=$2 WHERE id=$3",
-        book.GetTitle(),
-        book.GetPublicationYear(),
-        book.GetId().ToString());
-
-    work.commit();
-}
-
-std::vector<BookInfo> BookRepositoryImpl::GetAllWithAuthors() const {
-    pqxx::work work{connection_};
-
-    auto res = work.exec(R"(
-        SELECT b.id, b.title, a.name, b.publication_year
-        FROM books b
-        JOIN authors a ON b.author_id = a.id
-        ORDER BY b.title, a.name, b.publication_year
-    )");
-
-    std::vector<BookInfo> result;
-
-    for (const auto& row : res) {
-        result.push_back({
-            domain::BookId::FromString(row[0].c_str()),
-            row[1].c_str(),
-            row[2].c_str(),
-            row[3].as<int>()
-        });
-    }
-
-    return result;
-}
 
 }  // namespace postgres
