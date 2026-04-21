@@ -16,7 +16,7 @@ public:
     void DeleteBook(const domain::BookId& id) override;
     void DeleteAuthor(const domain::AuthorId& id) override;
 
-    AddBook(int year,
+    void AddBook(int year,
                           const std::string& title,
                           const std::string& author_name,
                           const std::vector<std::string>& tags) override;

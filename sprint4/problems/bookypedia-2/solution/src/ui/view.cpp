@@ -6,6 +6,7 @@
 
 #include "../app/use_cases.h"
 #include "../menu/menu.h"
+#include "../util/tagged.h"
 
 using namespace std::literals;
 namespace ph = std::placeholders;
@@ -75,7 +76,8 @@ bool View::AddAuthor(std::istream& cmd_input) const {
 bool View::AddBook(std::istream& cmd_input) const {
     try {
         if (auto params = GetBookParams(cmd_input)) {
-            use_cases_.AddBook(params->publication_year, params->title, params->author_id);
+            auto tags = NormalizeTags(tags_input);
+            use_cases_.AddBook(params->publication_year, params->title, params->author_id, tags);
             output_ << "Enter tags (comma separated):" << std::endl;
 
             std::string tags_input;

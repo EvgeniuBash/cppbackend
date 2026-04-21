@@ -42,11 +42,11 @@ void UseCasesImpl::AddBook(int year,
 }
 
 void UseCasesImpl::DeleteBook(const domain::BookId& id) {
-    book_repo_.Delete(id);
+    books_.Delete(id);
 }
 
 void UseCasesImpl::DeleteAuthor(const domain::AuthorId& id) {
-    author_repo_.Delete(id);
+    authors_.Delete(id);
 }
 
 std::vector<std::pair<std::string, std::string>> UseCasesImpl::GetAuthors() const {

@@ -43,6 +43,8 @@ private:
     bool ShowAuthors() const;
     bool ShowBooks() const;
     bool ShowAuthorBooks() const;
+    bool ShowBook(std::istream& cmd_input) const;
+    bool DeleteBook(std::istream& cmd_input) const;
 
     std::optional<detail::AddBookParams> GetBookParams(std::istream& cmd_input) const;
     std::optional<std::string> SelectAuthor() const;

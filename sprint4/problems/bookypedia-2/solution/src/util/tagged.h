@@ -5,6 +5,8 @@
 #include <vector>
 #include <algorithm>
 
+#include <boost/algorithm/string.hpp>
+
 namespace util {
 
 std::string NormalizeSpaces(std::string s) {
