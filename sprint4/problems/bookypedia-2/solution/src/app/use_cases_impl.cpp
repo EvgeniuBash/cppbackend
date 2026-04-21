@@ -20,7 +20,12 @@ void UseCasesImpl::AddBook(int year,
                           const std::string& author_name,
                           const std::vector<std::string>& tags) {
 
-    auto author = authors_.Save(domain::Author{domain::AuthorId::New(), author_name});
+    domain::Author author{
+        domain::AuthorId::New(),
+        author_name
+    };
+
+    authors_.Save(author);
 
     domain::Book book(
         domain::BookId::New(),
@@ -50,8 +55,7 @@ std::vector<std::pair<std::string, std::string>> UseCasesImpl::GetAuthors() cons
 
 std::vector<std::pair<std::string, int>> UseCasesImpl::GetBooks() const {
     std::vector<std::pair<std::string, int>> result;
-    if (!books_) return {};
-    for (const auto& b : books_->GetAll()) {
+    for (const auto& b : books_.GetAll()) {
         result.emplace_back(b.GetTitle(), b.GetPubYear());
     }
     return result;
@@ -59,7 +63,7 @@ std::vector<std::pair<std::string, int>> UseCasesImpl::GetBooks() const {
 
 std::vector<std::pair<std::string, int>> UseCasesImpl::GetAuthorBooks(const std::string& author_id) const {
     std::vector<std::pair<std::string, int>> result;
-    for (const auto& b : books_->GetByAuthor(domain::AuthorId::FromString(author_id))) {
+    for (const auto& b : books_.GetByAuthor(domain::AuthorId::FromString(author_id))) {
         result.emplace_back(b.GetTitle(), b.GetPubYear());
     }
     return result;

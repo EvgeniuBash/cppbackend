@@ -108,8 +108,6 @@ bool View::ShowBook(std::istream& cmd_input) const {
         std::getline(cmd_input, title);
         boost::algorithm::trim(title);
 
-        auto books = use_cases_.FindBooksByTitle(title);
-
         if (books.empty()) {
             return true;
         }
@@ -142,8 +140,6 @@ bool View::ShowBook(std::istream& cmd_input) const {
         output_ << "Title: " << book.title << std::endl;
         output_ << "Author: " << book.author << std::endl;
         output_ << "Publication year: " << book.publication_year << std::endl;
-
-        auto tags = use_cases_.GetTags(book.id);
 
         if (!tags.empty()) {
             output_ << "Tags: ";
@@ -184,7 +180,7 @@ bool View::DeleteBook(std::istream& cmd_input) const {
             return true;
         }
 
-        use_cases_.DeleteBook(books[index - 1].id);
+        use_cases_.DeleteBook(books[index - 1].first);
 
     } catch (...) {
         output_ << "Failed to delete book" << std::endl;
