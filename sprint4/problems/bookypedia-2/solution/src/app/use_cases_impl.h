@@ -10,8 +10,6 @@ public:
     explicit UseCasesImpl(domain::AuthorRepository& authors,
                           domain::BookRepository& books);
 
-    explicit UseCasesImpl(domain::AuthorRepository& authors);
-
     void AddAuthor(const std::string& name) override;
     void DeleteBook(const domain::BookId& id) override;
     void DeleteAuthor(const domain::AuthorId& id) override;
@@ -29,7 +27,7 @@ public:
 
 private:
     domain::AuthorRepository& authors_;
-    domain::BookRepository& books_ = nullptr;;
+    domain::BookRepository& books_;
 };
 
 }  // namespace app

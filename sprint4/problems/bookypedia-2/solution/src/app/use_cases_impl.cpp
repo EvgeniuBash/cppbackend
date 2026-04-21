@@ -8,12 +8,8 @@ using namespace domain;
 UseCasesImpl::UseCasesImpl(domain::AuthorRepository& authors,
                            domain::BookRepository& books)
     : authors_(authors)
-    , books_(&books) {}
+    , books_(books) {}
 
-
-UseCasesImpl::UseCasesImpl(domain::AuthorRepository& authors)
-    : authors_(authors)
-    , books_(nullptr) {}
 
 void UseCasesImpl::AddAuthor(const std::string& name) {
     authors_.Save({AuthorId::New(), name});
@@ -24,21 +20,16 @@ void UseCasesImpl::AddBook(int year,
                           const std::string& author_name,
                           const std::vector<std::string>& tags) {
 
-    auto author = authors_.FindByName(author_name);
+    auto author = authors_.Save(domain::Author{domain::AuthorId::New(), author_name});
 
-    if (!author) {
-        throw std::runtime_error("Author not found");
-    }
-
-    domain::Book book{
+    domain::Book book(
         domain::BookId::New(),
-        author->GetId(),
+        author.GetId(),
         title,
         year
-    };
+    );
 
     books_.Save(book);
-    book_repo_.SaveTags(book.GetId(), tags);
 }
 
 void UseCasesImpl::DeleteBook(const domain::BookId& id) {
