@@ -126,9 +126,9 @@ bool View::ShowBook(std::istream& input) const {
     std::getline(input, title);
     boost::algorithm::trim(title);
 
-    const auto book = use_cases_.GetBookByTitle(title);
+    const auto book = use_cases_.GetBook(title);
 
-    if (books.empty()) {
+    if (!book) {
     return true;
     }
 

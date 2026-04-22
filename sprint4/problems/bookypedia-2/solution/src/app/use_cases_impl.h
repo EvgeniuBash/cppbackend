@@ -29,6 +29,7 @@ public:
     std::vector<std::pair<std::string, int>> GetAuthorBooks(const std::string& author_id) const override;
 
     std::vector<BookInfo> GetBooksWithAuthors() const override;
+    std::optional<BookInfo> GetBook(const std::string& title) const override;
 
 private:
     domain::AuthorRepository& authors_;
