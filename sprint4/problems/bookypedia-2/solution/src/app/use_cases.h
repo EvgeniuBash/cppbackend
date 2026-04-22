@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 
 #include "../domain/book.h"
 #include "../domain/author.h"
