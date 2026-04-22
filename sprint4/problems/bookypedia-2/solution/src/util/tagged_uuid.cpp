@@ -21,4 +21,31 @@ UUIDType UUIDFromString(std::string_view str) {
 }
 
 }  // namespace detail
+
+std::string NormalizeSpaces(std::string s) {
+    std::stringstream ss(s);
+    std::string word, result;
+    while (ss >> word) {
+        if (!result.empty()) result += " ";
+        result += word;
+    }
+    return result;
+}
+
+std::vector<std::string> NormalizeTags(const std::string& input) {
+    std::stringstream ss(input);
+    std::string tag;
+    std::set<std::string> unique;
+
+    while (std::getline(ss, tag, ',')) {
+        boost::algorithm::trim(tag);
+        tag = NormalizeSpaces(tag);
+
+        if (!tag.empty()) {
+            unique.insert(tag);
+        }
+    }
+
+    return {unique.begin(), unique.end()};
+}
 }  // namespace util
