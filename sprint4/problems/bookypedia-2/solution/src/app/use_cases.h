@@ -29,6 +29,7 @@ public:
     virtual std::vector<BookInfo> GetBooksWithAuthors() const = 0;
     virtual void DeleteBook(const domain::BookId& id) = 0;
     virtual void DeleteAuthor(const domain::AuthorId& id) = 0;
+    virtual std::optional<BookInfo> GetBook(const std::string& title) const = 0;
 
 protected:
     ~UseCases() = default;

@@ -121,8 +121,30 @@ bool View::ShowBooks() const {
     return true;
 }
 
-bool View::ShowBook(std::istream&) const {
-    output_ << "Not implemented yet" << std::endl;
+bool View::ShowBook(std::istream& input) const {
+    std::string title;
+    std::getline(input, title);
+    boost::algorithm::trim(title);
+
+    const auto book = use_cases_.GetBookByTitle(title);
+
+    if (books.empty()) {
+    return true;
+    }
+
+    output_ << "Title: " << book->title << std::endl;
+    output_ << "Author: " << book->author << std::endl;
+    output_ << "Publication year: " << book->year << std::endl;
+
+    if (!book->tags.empty()) {
+        output_ << "Tags: ";
+        for (size_t i = 0; i < book->tags.size(); ++i) {
+            if (i > 0) output_ << ", ";
+            output_ << book->tags[i];
+        }
+        output_ << std::endl;
+    }
+
     return true;
 }
 
@@ -138,8 +160,19 @@ bool View::ShowAuthorBooks() const {
     return true;
 }
 
-bool View::DeleteBook(std::istream&) const {
-    output_ << "Not implemented yet" << std::endl;
+bool View::DeleteBook(std::istream& cmd_input) const {
+    std::string title;
+    std::getline(cmd_input, title);
+    boost::algorithm::trim(title);
+
+    for (const auto& b : use_cases_.GetBooksWithAuthors()) {
+        if (b.title == title) {
+            use_cases_.DeleteBook(domain::BookId::FromString(b.id));
+            return true;
+        }
+    }
+
+    output_ << "Book not found" << std::endl;
     return true;
 }
 
