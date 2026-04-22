@@ -114,7 +114,7 @@ bool View::ShowBooks() const {
     for (const auto& b : books) {
         output_ << i++ << " "
                 << b.title << " by "
-                << b.author_name << ", "
+                << b.author << ", "
                 << b.publication_year << std::endl;
     }
 
