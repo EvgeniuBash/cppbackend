@@ -174,6 +174,11 @@ bool View::DeleteBook(std::istream& cmd_input) const {
     return true;
 }
 
+bool View::EditBook(std::istream&) const {
+    output_ << "Not implemented yet" << std::endl;
+    return true;
+}
+
 std::optional<detail::AddBookParams> View::GetBookParams(std::istream& cmd_input) const {
     detail::AddBookParams params;
 

@@ -103,6 +103,7 @@ std::vector<app::BookInfo> UseCasesImpl::GetBooksWithAuthors() const {
             b.GetTitle(),
             author_name,
             b.GetPubYear()
+            b.GetTags()
         });
     }
 

@@ -14,6 +14,7 @@ struct BookInfo {
     std::string title;
     std::string author;
     int publication_year;
+    std::vector<std::string> tags;
 };
 
 class UseCases {
