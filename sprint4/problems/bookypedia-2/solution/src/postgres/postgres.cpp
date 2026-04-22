@@ -112,33 +112,7 @@ std::vector<domain::Author> AuthorRepositoryImpl::GetAll() const {
     return result;
 }
 
-void BookRepositoryImpl::Delete(const domain::BookId& id) {
-    pqxx::work work{connection_};
 
-    auto res = work.exec_params(
-        "DELETE FROM books WHERE id=$1",
-        id.ToString());
-
-    if (res.affected_rows() == 0) {
-        throw std::runtime_error("not found");
-    }
-
-    work.commit();
-}
-
-void AuthorRepositoryImpl::Delete(const domain::AuthorId& id) {
-    pqxx::work work{connection_};
-
-    auto res = work.exec_params(
-        "DELETE FROM authors WHERE id=$1",
-        id.ToString());
-
-    if (res.affected_rows() == 0) {
-        throw std::runtime_error("not found");
-    }
-
-    work.commit();
-}
 
 
 }  // namespace postgres
