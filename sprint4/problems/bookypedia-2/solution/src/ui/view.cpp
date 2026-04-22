@@ -102,6 +102,25 @@ bool View::ShowAuthors() const {
     return true;
 }
 
+bool View::ShowBooks() const {
+    const auto books = use_cases_.GetBooksWithAuthors();
+
+    if (books.empty()) {
+        output_ << "No books found" << std::endl;
+        return true;
+    }
+
+    int i = 1;
+    for (const auto& b : books) {
+        output_ << i++ << " "
+                << b.title << " by "
+                << b.author_name << ", "
+                << b.publication_year << std::endl;
+    }
+
+    return true;
+}
+
 bool View::ShowBook(std::istream&) const {
     output_ << "Not implemented yet" << std::endl;
     return true;
