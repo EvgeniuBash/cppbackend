@@ -52,6 +52,8 @@ View::View(menu::Menu& menu, app::UseCases& use_cases, std::istream& input, std:
                     std::bind(&View::ShowAuthorBooks, this));
     menu_.AddAction("ShowBook"s, "title"s, "Show book"s,
                 std::bind(&View::ShowBook, this, ph::_1));
+    menu_.AddAction("EditBook"s, {}, "Edit book"s,
+    std::bind(&View::EditBook, this, ph::_1));
 }
 
 bool View::AddAuthor(std::istream& cmd_input) const {
@@ -105,11 +107,6 @@ bool View::ShowAuthors() const {
 bool View::ShowBooks() const {
     const auto books = use_cases_.GetBooksWithAuthors();
 
-    if (books.empty()) {
-        output_ << "No books found" << std::endl;
-        return true;
-    }
-
     int i = 1;
     for (const auto& b : books) {
         output_ << i++ << " "
@@ -131,6 +128,15 @@ bool View::ShowBook(std::istream& cmd_input) const {
     if (!book) {
         output_ << "Book not found" << std::endl;
         return true;
+    }
+
+    if (!book->tags.empty()) {
+        output_ << "Tags: ";
+        for (size_t i = 0; i < book->tags.size(); ++i) {
+            if (i) output_ << ", ";
+            output_ << book->tags[i];
+        }
+        output_ << std::endl;
     }
 
     output_ << "Title: " << book->title << std::endl;

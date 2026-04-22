@@ -24,30 +24,38 @@ void UseCasesImpl::DeleteAuthor(const domain::AuthorId&) {
 void UseCasesImpl::AddBook(int year,
                           const std::string& title,
                           const std::string& author_name,
-                          const std::vector<std::string>&) {
+                          const std::vector<std::string>& tags) {
 
-    // ищем автора
+    // 1. Ищем автора
+    auto authors = authors_.GetAll();
+
+    auto it = std::find_if(authors.begin(), authors.end(),
+        [&](const domain::Author& a) {
+            return a.GetName() == author_name;
+        });
+
     domain::AuthorId author_id;
 
-    for (const auto& a : authors_.GetAll()) {
-        if (a.GetName() == author_name) {
-            author_id = a.GetId();
-            break;
-        }
-    }
-
-    if (author_id == domain::AuthorId{}) {
+    if (it != authors.end()) {
+        // автор найден
+        author_id = it->GetId();
+    } else {
+        // создаём нового
         domain::Author new_author{domain::AuthorId::New(), author_name};
-        author_id = new_author.GetId();
         authors_.Save(new_author);
+        author_id = new_author.GetId();
     }
 
+    // 2. Создаём книгу
     domain::Book book(
         domain::BookId::New(),
         author_id,
         title,
         year
     );
+
+    // ❗ если в Book есть теги — обязательно добавь это:
+    // book.SetTags(tags);
 
     books_.Save(book);
 }
@@ -80,17 +88,15 @@ std::vector<std::pair<std::string, int>> UseCasesImpl::GetAuthorBooks(const std:
 std::vector<app::BookInfo> UseCasesImpl::GetBooksWithAuthors() const {
     std::vector<BookInfo> result;
 
-    const auto authors = authors_.GetAll();
+    auto authors = authors_.GetAll();
 
     for (const auto& b : books_.GetAll()) {
-        std::string author_name;
+       auto it = std::find_if(authors.begin(), authors.end(),
+            [&](const Author& a) {
+                return a.GetId() == b.GetAuthorId();
+            });
 
-        for (const auto& a : authors) {
-            if (a.GetId() == b.GetAuthorId()) {
-                author_name = a.GetName();
-                break;
-            }
-        }
+        std::string author_name = (it != authors.end()) ? it->GetName() : "Unknown";
 
         result.push_back({
             b.GetId().ToString(),
