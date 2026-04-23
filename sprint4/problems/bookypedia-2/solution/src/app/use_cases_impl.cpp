@@ -141,7 +141,7 @@ std::vector<BookInfo> UseCasesImpl::GetBooksWithAuthors() const {
     std::sort(result.begin(), result.end(),
         [](const BookInfo& lhs, const BookInfo& rhs) {
             return std::tie(lhs.title, lhs.author, lhs.publication_year)
-                < std::tie(rhs.title, rhs.author, rhs.publication_year);
+                 < std::tie(rhs.title, rhs.author, rhs.publication_year);
         });
 
     return result;
@@ -163,3 +163,4 @@ std::optional<BookInfo> UseCasesImpl::GetBook(const std::string& title) const {
 }
 
 }  // namespace app
+

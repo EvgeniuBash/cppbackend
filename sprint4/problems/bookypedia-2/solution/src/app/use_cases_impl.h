@@ -1,5 +1,6 @@
 #pragma once
-#include "../domain/author_fwd.h"
+
+#include "../domain/author.h"
 #include "../domain/book.h"
 #include "use_cases.h"
 
@@ -7,6 +8,12 @@ namespace app {
 
 class UseCasesImpl : public UseCases {
 public:
+    // Старый конструктор оставляем ради локальных unit-тестов
+    explicit UseCasesImpl(domain::AuthorRepository& authors)
+        : authors_(authors)
+        , books_(dummy_books_) {
+    }
+
     UseCasesImpl(domain::AuthorRepository& authors, domain::BookRepository& books);
 
     void AddAuthor(const std::string& name) override;
@@ -33,6 +40,29 @@ public:
 
 private:
     domain::AuthorRepository& authors_;
+
+    class DummyBookRepo : public domain::BookRepository {
+    public:
+        void Save(const domain::Book&) override {
+        }
+
+        bool Update(const domain::Book&) override {
+            return false;
+        }
+
+        std::vector<domain::Book> GetAll() const override {
+            return {};
+        }
+
+        std::vector<domain::Book> GetByAuthor(const domain::AuthorId&) const override {
+            return {};
+        }
+
+        bool Delete(const domain::BookId&) override {
+            return false;
+        }
+    } dummy_books_;
+
     domain::BookRepository& books_;
 };
 

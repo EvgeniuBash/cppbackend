@@ -37,8 +37,15 @@ class AuthorRepository {
 public:
     virtual void Save(const Author& author) = 0;
     virtual std::vector<Author> GetAll() const = 0;
-    virtual bool Delete(const AuthorId& id) = 0;
-    virtual bool Edit(const AuthorId& id, const std::string& new_name) = 0;
+
+    // Делаем НЕ pure virtual, чтобы старые локальные тесты с моками компилировались.
+    virtual bool Delete(const AuthorId&) {
+        return false;
+    }
+
+    virtual bool Edit(const AuthorId&, const std::string&) {
+        return false;
+    }
 
 protected:
     ~AuthorRepository() = default;
