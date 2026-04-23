@@ -67,7 +67,7 @@ VALUES ($1, $2, $3, $4);
     work.commit();
 }
 
-std::vector<domain::Book> BookRepositoryImpl::GetAll() const {
+std::vector<domain::Book> postgres::BookRepositoryImpl::GetAll() const {
     pqxx::work work{connection_};
     auto res = work.exec("SELECT id, author_id, title, publication_year FROM books ORDER BY title;");
 
@@ -83,7 +83,7 @@ std::vector<domain::Book> BookRepositoryImpl::GetAll() const {
     return result;
 }
 
-std::vector<domain::Book> BookRepositoryImpl::GetByAuthor(const domain::AuthorId& author_id) const {
+std::vector<domain::Book> postgres::BookRepositoryImpl::GetByAuthor(const domain::AuthorId& author_id) const {
     pqxx::work work{connection_};
     auto res = work.exec_params(
         "SELECT id, author_id, title, publication_year FROM books WHERE author_id=$1 ORDER BY publication_year, title;",
