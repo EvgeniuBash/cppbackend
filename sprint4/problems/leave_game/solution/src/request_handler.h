@@ -5,6 +5,7 @@
 #include "model.h"
 #include "api_handler.h"
 #include "map_extra_data.h"
+#include "db.h"
 
 #include <filesystem>
 #include <string>
@@ -35,13 +36,15 @@ public:
                    std::filesystem::path static_root,
                    extra_data::Storage& extra_data,
                    bool randomize_spawn,
-                   std::optional<int> tick_period)
+                   std::optional<int> tick_period,
+                   Database& db)
         : game_(game)
         , players_(players)
         , static_root_(std::move(static_root))
         , extra_data_(extra_data)
         , api_handler_(game_, players_, extra_data_, randomize_spawn)
-        , tick_period_(tick_period) {}
+        , tick_period_(tick_period)
+        , db_(db) {}
 
     template <typename Body, typename Allocator, typename Send>
     void operator()(http::request<Body, http::basic_fields<Allocator>>&& req, Send&& send) {
@@ -262,6 +265,7 @@ private:
     extra_data::Storage& extra_data_;
     ApiHandler api_handler_;
     std::optional<int> tick_period_;
+    Database& db_;
 };
 
 } // namespace http_handler

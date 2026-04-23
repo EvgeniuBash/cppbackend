@@ -125,7 +125,8 @@ int main(int argc, const char* argv[]) {
             args.www_root,
             extra_storage,
             args.randomize_spawn_points,
-            args.tick_period
+            args.tick_period,
+            db
         };
         LoggingRequestHandler logging_handler{handler};
 
