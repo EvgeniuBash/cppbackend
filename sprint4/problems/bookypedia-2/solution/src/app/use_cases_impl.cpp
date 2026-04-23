@@ -98,22 +98,23 @@ void UseCasesImpl::EditAuthor(const domain::AuthorId& id, const std::string& new
     }
 }
 
-void UseCasesImpl::EditBook(const domain::BookId& id,
+void UseCasesImpl::EditBook(const std::string& id,
                            const std::string& new_title,
                            int new_year,
                            const std::vector<std::string>& new_tags) {
     auto books = books_.GetAll();
     
     auto it = std::find_if(books.begin(), books.end(),
-        [&](const domain::Book& b) { return b.GetId() == id; });
+        [&](const domain::Book& b) {
+            return b.GetId().ToString() == id;
+        });
     
     if (it != books.end()) {
-        // Если значения пустые, оставляем старые
         std::string title = new_title.empty() ? it->GetTitle() : new_title;
         int year = (new_year == 0) ? it->GetPubYear() : new_year;
         const auto& tags = new_tags.empty() ? it->GetTags() : new_tags;
         
-        domain::Book updated_book(id, it->GetAuthorId(), title, year, tags);
+        domain::Book updated_book(it->GetId(), it->GetAuthorId(), title, year, tags);
         books_.Save(updated_book);
     }
 }

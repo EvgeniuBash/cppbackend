@@ -29,10 +29,10 @@ public:
     std::vector<BookInfo> GetBooksWithAuthors() const override;
     std::optional<BookInfo> GetBook(const std::string& title) const override;
     
-    void EditBook(const domain::BookId& id,
-                  const std::string& new_title,
-                  int new_year,
-                  const std::vector<std::string>& new_tags) override;
+    void EditBook(const std::string& id,
+              const std::string& new_title,
+              int new_year,
+              const std::vector<std::string>& new_tags) override;
 private:
     domain::AuthorRepository& authors_;
     domain::BookRepository& books_;
