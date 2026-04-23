@@ -27,7 +27,6 @@ void UseCasesImpl::AddBook(int year,
                           const std::string& author_name,
                           const std::vector<std::string>& tags) {
 
-    // 1. Ищем автора
     auto authors = authors_.GetAll();
 
     auto it = std::find_if(authors.begin(), authors.end(),
@@ -38,16 +37,13 @@ void UseCasesImpl::AddBook(int year,
     domain::AuthorId author_id;
 
     if (it != authors.end()) {
-        // автор найден
         author_id = it->GetId();
     } else {
-        // создаём нового
         domain::Author new_author{domain::AuthorId::New(), author_name};
         authors_.Save(new_author);
         author_id = new_author.GetId();
     }
 
-    // 2. Создаём книгу
     domain::Book book(
         domain::BookId::New(),
         author_id,
@@ -56,8 +52,8 @@ void UseCasesImpl::AddBook(int year,
         tags
     );
 
-    // ❗ если в Book есть теги — обязательно добавь это:
-    // book.SetTags(tags);
+    // на всякий случай (если в модели требуется)
+    book.SetTags(tags);
 
     books_.Save(book);
 }
@@ -74,13 +70,16 @@ void UseCasesImpl::EditBook(const std::string& id,
         });
 
     if (it == books.end()) {
-        return; 
+        return;
     }
+
+    std::string new_title = title;
+    boost::algorithm::trim(new_title);
 
     domain::Book updated(
         it->GetId(),
         it->GetAuthorId(),
-        title.empty() ? it->GetTitle() : title,
+        new_title.empty() ? it->GetTitle() : new_title,
         year == 0 ? it->GetPubYear() : year,
         tags.empty() ? it->GetTags() : tags
     );

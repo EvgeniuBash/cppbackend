@@ -130,6 +130,10 @@ bool View::ShowBook(std::istream& cmd_input) const {
         return true;
     }
 
+    output_ << "Title: " << book->title << std::endl;
+    output_ << "Author: " << book->author_name << std::endl;
+    output_ << "Publication year: " << book->publication_year << std::endl;
+
     if (!book->tags.empty()) {
         output_ << "Tags: ";
         for (size_t i = 0; i < book->tags.size(); ++i) {
@@ -138,10 +142,6 @@ bool View::ShowBook(std::istream& cmd_input) const {
         }
         output_ << std::endl;
     }
-
-    output_ << "Title: " << book->title << std::endl;
-    output_ << "Author: " << book->author << std::endl;
-    output_ << "Publication year: " << book->publication_year << std::endl;
 
     return true;
 }
