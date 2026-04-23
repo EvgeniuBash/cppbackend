@@ -14,6 +14,8 @@ public:
 
     void Save(const domain::Author& author) override;
     std::vector<domain::Author> GetAll() const override;
+    bool Delete(const domain::AuthorId& id) override;
+    bool Edit(const domain::AuthorId& id, const std::string& new_name) override;
 
 private:
     pqxx::connection& connection_;
@@ -25,15 +27,11 @@ public:
         : connection_(conn) {}
 
     void Save(const domain::Book& book) override;
-    void Delete(const domain::BookId& id) override;
+    bool Update(const domain::Book& book) override;
+    bool Delete(const domain::BookId& id) override;
 
     std::vector<domain::Book> GetAll() const override;
     std::vector<domain::Book> GetByAuthor(const domain::AuthorId& author_id) const override;
-
-    void SaveTags(const domain::BookId& book_id,
-              const std::vector<std::string>& tags);
-
-    std::vector<std::string> GetTags(const domain::BookId& book_id) const;
 
 private:
     pqxx::connection& connection_;

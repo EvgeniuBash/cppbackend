@@ -39,9 +39,10 @@ private:
 class BookRepository {
 public:
     virtual void Save(const Book& book) = 0;
+    virtual bool Update(const Book& book) = 0;
     virtual std::vector<Book> GetAll() const = 0;
     virtual std::vector<Book> GetByAuthor(const AuthorId& author_id) const = 0;
-    virtual void Delete(const BookId& id) = 0;
+    virtual bool Delete(const BookId& id) = 0;
 
 protected:
     ~BookRepository() = default;

@@ -163,15 +163,84 @@ std::vector<domain::Author> AuthorRepositoryImpl::GetAll() const {
     return result;
 }
 
-void BookRepositoryImpl::Delete(const domain::BookId& id) {
+bool BookRepositoryImpl::Delete(const domain::BookId& id) {
     pqxx::work work{connection_};
 
-    work.exec_params(
+    auto res = work.exec_params(
         "DELETE FROM books WHERE id=$1;",
         id.ToString()
     );
 
+    if (res.affected_rows() != 1) {
+        return false;
+    }
+
     work.commit();
+    return true;
+}
+
+bool AuthorRepositoryImpl::Delete(const domain::AuthorId& id) {
+    pqxx::work work{connection_};
+
+    work.exec_params("DELETE FROM books WHERE author_id=$1;", id.ToString());
+    auto res = work.exec_params("DELETE FROM authors WHERE id=$1;", id.ToString());
+
+    if (res.affected_rows() != 1) {
+        return false;
+    }
+
+    work.commit();
+    return true;
+}
+
+bool AuthorRepositoryImpl::Edit(const domain::AuthorId& id, const std::string& new_name) {
+    pqxx::work work{connection_};
+
+    auto res = work.exec_params(
+        "UPDATE authors SET name=$2 WHERE id=$1;",
+        id.ToString(),
+        new_name
+    );
+
+    if (res.affected_rows() != 1) {
+        return false;
+    }
+
+    work.commit();
+    return true;
+}
+
+bool BookRepositoryImpl::Update(const domain::Book& book) {
+    pqxx::work work{connection_};
+
+    auto res = work.exec_params(
+        R"(
+UPDATE books
+SET author_id=$2, title=$3, publication_year=$4
+WHERE id=$1;
+)"_zv,
+        book.GetId().ToString(),
+        book.GetAuthorId().ToString(),
+        book.GetTitle(),
+        book.GetPubYear()
+    );
+
+    if (res.affected_rows() != 1) {
+        return false;
+    }
+
+    work.exec_params("DELETE FROM book_tags WHERE book_id=$1;", book.GetId().ToString());
+
+    for (const auto& tag : book.GetTags()) {
+        work.exec_params(
+            "INSERT INTO book_tags (book_id, tag) VALUES ($1, $2);",
+            book.GetId().ToString(),
+            tag
+        );
+    }
+
+    work.commit();
+    return true;
 }
 
 }  // namespace postgres

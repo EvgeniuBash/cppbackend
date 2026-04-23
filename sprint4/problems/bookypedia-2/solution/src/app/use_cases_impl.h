@@ -10,31 +10,28 @@ public:
     explicit UseCasesImpl(domain::AuthorRepository& authors)
     : authors_(authors), books_(dummy_books_) {}
 
-    explicit UseCasesImpl(domain::AuthorRepository& authors,
-                          domain::BookRepository& books);
-
     void AddAuthor(const std::string& name) override;
-    void DeleteBook(const domain::BookId& id) override;
-    void DeleteAuthor(const domain::AuthorId& id) override;
-
-    void EditBook(const std::string& id,
-                  const std::string& title,
-                  int year,
-                  const std::vector<std::string>& tags) override;
+    bool EditAuthor(const std::string& id, const std::string& new_name) override;
+    bool DeleteAuthor(const std::string& id) override;
 
     void AddBook(int year,
                  const std::string& title,
                  const std::string& author_name,
                  const std::vector<std::string>& tags) override;
 
+    bool DeleteBook(const std::string& id) override;
+
+    bool EditBook(const std::string& id,
+                  const std::string& title,
+                  int year,
+                  const std::vector<std::string>& tags) override;
+
     std::vector<std::pair<std::string, std::string>> GetAuthors() const override;
-
     std::vector<std::pair<std::string, int>> GetBooks() const override;
-
     std::vector<std::pair<std::string, int>> GetAuthorBooks(const std::string& author_id) const override;
-
     std::vector<BookInfo> GetBooksWithAuthors() const override;
     std::optional<BookInfo> GetBook(const std::string& title) const override;
+    std::optional<BookInfo> GetBookById(const std::string& id) const override;
 
 private:
     domain::AuthorRepository& authors_;

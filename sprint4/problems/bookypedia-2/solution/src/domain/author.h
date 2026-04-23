@@ -37,6 +37,8 @@ class AuthorRepository {
 public:
     virtual void Save(const Author& author) = 0;
     virtual std::vector<Author> GetAll() const = 0;
+    virtual bool Delete(const AuthorId& id) = 0;
+    virtual bool Edit(const AuthorId& id, const std::string& new_name) = 0;
 
 protected:
     ~AuthorRepository() = default;
