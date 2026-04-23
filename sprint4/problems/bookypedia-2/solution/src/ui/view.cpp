@@ -198,7 +198,6 @@ bool View::AddBook(std::istream& cmd_input) const {
 
             std::string str;
             if (!std::getline(input_, str) || str.empty()) {
-                // Тестовый helper всё равно потом шлёт строку тегов.
                 output_ << "Enter tags (comma separated):" << std::endl;
                 std::string dummy_tags;
                 std::getline(input_, dummy_tags);
@@ -232,10 +231,6 @@ bool View::AddBook(std::istream& cmd_input) const {
                 boost::algorithm::trim(answer);
 
                 if (answer != "y" && answer != "Y") {
-                    output_ << "Enter tags (comma separated):" << std::endl;
-                    std::string dummy_tags;
-                    std::getline(input_, dummy_tags);
-
                     output_ << "Failed to add book" << std::endl;
                     return true;
                 }
