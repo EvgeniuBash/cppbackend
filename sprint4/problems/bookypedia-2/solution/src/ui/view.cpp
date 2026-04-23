@@ -34,6 +34,13 @@ std::ostream& operator<<(std::ostream& out, const BookInfo& book) {
 
 namespace {
 
+void DrainPendingLine(std::istream& input) {
+    if (input.rdbuf()->in_avail() > 0) {
+        std::string dummy;
+        std::getline(input, dummy);
+    }
+}
+
 template <typename T>
 void PrintVector(std::ostream& out, const std::vector<T>& vector) {
     int i = 1;
@@ -181,6 +188,7 @@ bool View::AddBook(std::istream& cmd_input) const {
 
         if (author_name.empty()) {
             if (authors.empty()) {
+                DrainPendingLine(input_);
                 output_ << "Failed to add book" << std::endl;
                 return true;
             }
@@ -191,12 +199,14 @@ bool View::AddBook(std::istream& cmd_input) const {
 
             std::string str;
             if (!std::getline(input_, str) || str.empty()) {
+                DrainPendingLine(input_);
                 output_ << "Failed to add book" << std::endl;
                 return true;
             }
 
             int idx = std::stoi(str) - 1;
             if (idx < 0 || idx >= static_cast<int>(authors.size())) {
+                DrainPendingLine(input_);
                 output_ << "Failed to add book" << std::endl;
                 return true;
             }
@@ -216,6 +226,7 @@ bool View::AddBook(std::istream& cmd_input) const {
                 boost::algorithm::trim(answer);
 
                 if (answer != "y" && answer != "Y") {
+                    DrainPendingLine(input_);
                     output_ << "Failed to add book" << std::endl;
                     return true;
                 }
@@ -311,7 +322,7 @@ bool View::DeleteBook(std::istream& cmd_input) const {
         }
 
         if (candidates.empty()) {
-            output_ << "Failed to delete book" << std::endl;
+            output_ << "Book not found" << std::endl;
             return true;
         }
 
@@ -319,6 +330,7 @@ bool View::DeleteBook(std::istream& cmd_input) const {
         if (title.empty() || candidates.size() > 1) {
             selected = SelectBookFromList(candidates, input_, output_);
             if (!selected) {
+                output_ << "Book not found" << std::endl;
                 return true;
             }
         } else {
@@ -409,6 +421,7 @@ bool View::EditBook(std::istream& cmd_input) const {
         if (title.empty() || candidates.size() > 1) {
             selected = SelectBookFromList(candidates, input_, output_);
             if (!selected) {
+                output_ << "Book not found" << std::endl;
                 return true;
             }
         } else {
@@ -416,11 +429,13 @@ bool View::EditBook(std::istream& cmd_input) const {
         }
 
         output_ << "Enter new title or empty line to use the current one (" << selected->title << "):" << std::endl;
+
         std::string new_title;
         std::getline(input_, new_title);
         boost::algorithm::trim(new_title);
 
         output_ << "Enter publication year or empty line to use the current one (" << selected->publication_year << "):" << std::endl;
+
         std::string year_str;
         std::getline(input_, year_str);
         boost::algorithm::trim(year_str);
