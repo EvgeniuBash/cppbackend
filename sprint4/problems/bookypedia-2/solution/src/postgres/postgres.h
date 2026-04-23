@@ -14,6 +14,7 @@ public:
 
     void Save(const domain::Author& author) override;
     std::vector<domain::Author> GetAll() const override;
+    void Delete(const domain::AuthorId& id) override; 
 
 private:
     pqxx::connection& connection_;
@@ -26,7 +27,6 @@ public:
 
     void Save(const domain::Book& book) override;
     void Delete(const domain::BookId& id) override;
-    void Delete(const domain::AuthorId& id) override;
 
     std::vector<domain::Book> GetAll() const override;
     std::vector<domain::Book> GetByAuthor(const domain::AuthorId& author_id) const override;
