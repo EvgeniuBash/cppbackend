@@ -17,6 +17,11 @@ public:
     void DeleteBook(const domain::BookId& id) override;
     void DeleteAuthor(const domain::AuthorId& id) override;
 
+    void EditBook(const std::string& id,
+                  const std::string& title,
+                  int year,
+                  const std::vector<std::string>& tags);
+
     void AddBook(int year,
                  const std::string& title,
                  const std::string& author_name,

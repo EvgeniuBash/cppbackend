@@ -15,9 +15,6 @@ void UseCasesImpl::AddAuthor(const std::string& name) {
     authors_.Save({AuthorId::New(), name});
 }
 
-void UseCasesImpl::DeleteBook(const domain::BookId&) {
-}
-
 void UseCasesImpl::DeleteAuthor(const domain::AuthorId&) {
 }
 
