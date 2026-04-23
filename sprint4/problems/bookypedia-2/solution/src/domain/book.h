@@ -14,7 +14,7 @@ using BookId = util::TaggedUUID<detail::BookTag>;
 
 class Book {
 public:
-    Book(BookId id, AuthorId author_id, std::string title, int pub_year)
+    Book(BookId id, AuthorId author_id, std::string title, int pub_year, std::vector<std::string> tags)
         : id_(std::move(id))
         , author_id_(std::move(author_id))
         , title_(std::move(title))
