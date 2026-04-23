@@ -58,4 +58,35 @@ std::vector<Player*> PlayerManager::GetAllPlayers() {
     return result;
 }
 
+std::vector<Player*> PlayerManager::RemoveInactive(std::chrono::seconds max_idle) {
+    std::vector<Player*> retired;
+
+    auto now = Player::Clock::now();
+
+    for (auto& p : players_) {
+        auto idle = std::chrono::duration_cast<std::chrono::seconds>(
+            now - p.GetLastMoveTime()
+        );
+
+        if (idle >= max_idle) {
+            retired.push_back(&p);
+        }
+    }
+
+    for (auto* p : retired) {
+        token_to_player_.erase(p->GetToken());
+    }
+
+    players_.erase(
+        std::remove_if(players_.begin(), players_.end(),
+            [&](const Player& p) {
+                return std::find_if(retired.begin(), retired.end(),
+                    [&](Player* rp) { return rp->GetId() == p.GetId(); }) != retired.end();
+            }),
+        players_.end()
+    );
+
+    return retired;
+}
+
 } // namespace model
