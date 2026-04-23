@@ -52,9 +52,6 @@ void UseCasesImpl::AddBook(int year,
         tags
     );
 
-    // на всякий случай (если в модели требуется)
-    book.SetTags(tags);
-
     books_.Save(book);
 }
 

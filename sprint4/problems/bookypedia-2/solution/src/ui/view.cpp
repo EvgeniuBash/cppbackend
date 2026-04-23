@@ -131,7 +131,7 @@ bool View::ShowBook(std::istream& cmd_input) const {
     }
 
     output_ << "Title: " << book->title << std::endl;
-    output_ << "Author: " << book->author_name << std::endl;
+    output_ << "Author: " << book->author << std::endl;
     output_ << "Publication year: " << book->publication_year << std::endl;
 
     if (!book->tags.empty()) {
