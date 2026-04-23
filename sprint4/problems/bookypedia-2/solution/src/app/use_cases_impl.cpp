@@ -86,13 +86,13 @@ std::vector<std::pair<std::string, int>> UseCasesImpl::GetAuthorBooks(const std:
 }
 
 std::vector<app::BookInfo> UseCasesImpl::GetBooksWithAuthors() const {
-    std::vector<BookInfo> result;
+    std::vector<app::BookInfo> result;
 
     auto authors = authors_.GetAll();
 
     for (const auto& b : books_.GetAll()) {
-       auto it = std::find_if(authors.begin(), authors.end(),
-            [&](const Author& a) {
+        auto it = std::find_if(authors.begin(), authors.end(),
+            [&](const domain::Author& a) {
                 return a.GetId() == b.GetAuthorId();
             });
 
@@ -102,7 +102,7 @@ std::vector<app::BookInfo> UseCasesImpl::GetBooksWithAuthors() const {
             b.GetId().ToString(),
             b.GetTitle(),
             author_name,
-            b.GetPubYear()
+            b.GetPubYear(),
             b.GetTags()
         });
     }
@@ -110,16 +110,17 @@ std::vector<app::BookInfo> UseCasesImpl::GetBooksWithAuthors() const {
     return result;
 }
 
-std::optional<BookInfo> UseCasesImpl::GetBook(const std::string& title) const {
+std::optional<app::BookInfo> UseCasesImpl::GetBook(const std::string& title) const {
     for (const auto& b : books_.GetAll()) {
         if (b.GetTitle() == title) {
             for (const auto& a : authors_.GetAll()) {
                 if (a.GetId() == b.GetAuthorId()) {
-                    return BookInfo{
+                    return app::BookInfo{
                         b.GetId().ToString(),
                         b.GetTitle(),
                         a.GetName(),
-                        b.GetPubYear()
+                        b.GetPubYear(),
+                        b.GetTags()
                     };
                 }
             }
