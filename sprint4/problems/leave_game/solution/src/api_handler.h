@@ -31,7 +31,7 @@ public:
     template <typename Send>
     void HandleJoin(const http::request<http::string_body>& req, Send&& send) {
         if (req.method() != http::verb::post) {
-            sendMethodNotAllowed(req, send, "POST");
+            SendMethodNotAllowed(req, send, "POST");
             return;
         }
 
@@ -39,14 +39,14 @@ public:
         try {
             body = json::parse(req.body());
         } catch (...) {
-            sendBadRequest(req, send, "Join game request parse error");
+            SendBadRequest(req, send, "Join game request parse error");
             return;
         }
 
         auto obj = body.as_object();
 
         if (!obj.contains("userName") || !obj.contains("mapId")) {
-            sendBadRequest(req, send, "Missing userName or mapId");
+            SendBadRequest(req, send, "Missing userName or mapId");
             return;
         }
 
@@ -54,18 +54,18 @@ public:
         std::string map_id = obj["mapId"].as_string().c_str();
 
         if (name.empty()) {
-            sendBadRequest(req, send, "Invalid name");
+            SendBadRequest(req, send, "Invalid name");
             return;
         }
 
         const model::Map* map = game_.FindMap(model::Map::Id{map_id});
         if (!map) {
-            sendNotFound(req, send, "mapNotFound", "Map not found");
+            SendNotFound(req, send, "mapNotFound", "Map not found");
             return;
         }
 
         if (map->GetRoads().empty()) {
-            sendBadRequest(req, send, "Map has no roads");
+            SendBadRequest(req, send, "Map has no roads");
             return;
         }
 
@@ -134,7 +134,7 @@ public:
 
         if (req.method() != http::verb::get &&
             req.method() != http::verb::head) {
-            sendMethodNotAllowed(req, send, "GET, HEAD");
+            SendMethodNotAllowed(req, send, "GET, HEAD");
             return;
         }
 
@@ -197,12 +197,12 @@ public:
                       Send&& send) {
 
         if (req.method() != http::verb::post) {
-            sendMethodNotAllowed(req, send, "POST");
+            SendMethodNotAllowed(req, send, "POST");
             return;
         }
 
         if (req[http::field::content_type] != "application/json") {
-            sendBadRequest(req, send, "Invalid content type");
+            SendBadRequest(req, send, "Invalid content type");
             return;
         }
 
@@ -213,12 +213,12 @@ public:
                 try {
                     body = json::parse(req.body());
                 } catch (...) {
-                    sendBadRequest(req, send, "Failed to parse action");
+                    SendBadRequest(req, send, "Failed to parse action");
                     return;
                 }
 
                 if (!body.is_object() || !body.as_object().contains("move")) {
-                    sendBadRequest(req, send, "Failed to parse action");
+                    SendBadRequest(req, send, "Failed to parse action");
                     return;
                 }
 
@@ -226,7 +226,7 @@ public:
 
                 const model::Map* map = game_.FindMap(player->GetMapId());
                 if (!map) {
-                    sendBadRequest(req, send, "Map not found");
+                    SendBadRequest(req, send, "Map not found");
                     return;
                 }
 
@@ -253,12 +253,12 @@ public:
                     Send&& send) {
 
         if (req.method() != http::verb::post) {
-            sendMethodNotAllowed(req, send, "POST");
+            SendMethodNotAllowed(req, send, "POST");
             return;
         }
 
         if (req[http::field::content_type] != "application/json") {
-            sendInvalidArgument(req, send, "Invalid content type");
+            SendInvalidArgument(req, send, "Invalid content type");
             return;
         }
 
@@ -266,20 +266,20 @@ public:
         try {
             body = json::parse(req.body());
         } catch (...) {
-            sendInvalidArgument(req, send, "Failed to parse tick request JSON");
+            SendInvalidArgument(req, send, "Failed to parse tick request JSON");
             return;
         }
 
         auto& obj = body.as_object();
 
         if (!obj.contains("timeDelta") || !obj.at("timeDelta").is_int64()) {
-            sendInvalidArgument(req, send, "Invalid timeDelta");
+            SendInvalidArgument(req, send, "Invalid timeDelta");
             return;
         }
 
         int64_t delta_ms = obj.at("timeDelta").as_int64();
         if (delta_ms < 0) {
-            sendInvalidArgument(req, send, "Invalid timeDelta");
+            SendInvalidArgument(req, send, "Invalid timeDelta");
             return;
         }
 
@@ -329,7 +329,7 @@ public:
                 }
 
             private:
-                static constexpr double PLAYER_RADIUS = 0.3;
+                constexpr double PLAYER_RADIUS = 0.3;
                 const std::vector<model::Player*>& players_;
                 const std::vector<model::LostObject>& items_;
             };
@@ -460,7 +460,7 @@ private:
         model::Speed best_speed = speed;
  
         if (speed.vx != 0 || speed.vy != 0) {
-            player->SetLastMoveTime(Player::Clock::now());
+            player->SetLastMoveTime(model::Player::Clock::now());
         }
 
         auto is_better = [&](const model::Position& cand) {
@@ -548,7 +548,7 @@ private:
         auto it = req.find(http::field::authorization);
 
         if (it == req.end() || it->value().empty()) {
-            sendUnauthorized(req, send, "invalidToken", "Authorization missing");
+            SendUnauthorized(req, send, "invalidToken", "Authorization missing");
             return;
         }
 
@@ -556,7 +556,7 @@ private:
 
         const std::string prefix = "Bearer ";
         if (!auth.starts_with(prefix)) {
-            sendUnauthorized(req, send, "invalidToken", "Bad auth header");
+            SendUnauthorized(req, send, "invalidToken", "Bad auth header");
             return;
         }
 
@@ -571,13 +571,13 @@ private:
         };
 
         if (!isValidToken(token)) {
-            sendUnauthorized(req, send, "invalidToken", "Invalid token");
+            SendUnauthorized(req, send, "invalidToken", "Invalid token");
             return;
         }
 
         auto player = players_.FindByToken(token);
         if (!player) {
-            sendUnauthorized(req, send, "unknownToken", "Not found");
+            SendUnauthorized(req, send, "unknownToken", "Not found");
             return;
         }
 
