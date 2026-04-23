@@ -174,16 +174,4 @@ void BookRepositoryImpl::Delete(const domain::BookId& id) {
     work.commit();
 }
 
-void AuthorRepositoryImpl::Delete(const domain::AuthorId& id) {
-    pqxx::work work{connection_};
-
-    work.exec_params(
-        "DELETE FROM authors WHERE id=$1;",
-        id.ToString()
-    );
-
-    work.commit();
-}
-
-
 }  // namespace postgres

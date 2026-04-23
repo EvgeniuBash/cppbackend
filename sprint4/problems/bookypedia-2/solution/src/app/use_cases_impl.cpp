@@ -22,7 +22,6 @@ void UseCasesImpl::DeleteAuthor(const domain::AuthorId& id) {
         books_.Delete(b.GetId());
     }
 
-    authors_.Delete(id);
 }
 
 void UseCasesImpl::DeleteBook(const domain::BookId& id) {
