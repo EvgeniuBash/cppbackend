@@ -46,7 +46,8 @@ void UseCasesImpl::AddBook(int year,
         domain::BookId::New(),
         author_id,
         title,
-        year
+        year,
+        tags
     );
 
     books_.Save(book);
