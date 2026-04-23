@@ -91,29 +91,66 @@ bool View::AddBook(std::istream& cmd_input) const {
         std::getline(cmd_input, title);
         boost::algorithm::trim(title);
 
-        std::string author;
-        std::getline(cmd_input, author);
-        boost::algorithm::trim(author);
-
         std::string year_str;
         std::getline(cmd_input, year_str);
         int year = std::stoi(year_str);
 
-        std::string tags_line;
-        std::getline(cmd_input, tags_line);
+        output_ << "Enter author name or empty line to select from list:" << std::endl;
 
-        std::vector<std::string> tags;
-        std::stringstream ss(tags_line);
-        std::string tag;
+        std::string author_name;
+        std::getline(input_, author_name);
+        boost::algorithm::trim(author_name);
 
-        while (std::getline(ss, tag, ',')) {
-            boost::algorithm::trim(tag);
-            if (!tag.empty()) {
-                tags.push_back(tag);
+        std::string author_id;
+
+        auto authors = use_cases_.GetAuthors();
+
+        if (author_name.empty()) {
+            auto selected = SelectAuthor();
+            if (!selected) {
+                output_ << "Failed to add book" << std::endl;
+                return true;
+            }
+            author_id = *selected;
+        } else {
+            for (auto& [id, name] : authors) {
+                if (name == author_name) {
+                    author_id = id;
+                    break;
+                }
+            }
+
+            if (author_id.empty()) {
+                output_ << "No author found. Do you want to add " << author_name << " (y/n)?" << std::endl;
+
+                std::string answer;
+                std::getline(input_, answer);
+
+                if (answer != "y" && answer != "Y") {
+                    output_ << "Failed to add book" << std::endl;
+                    return true;
+                }
+
+                use_cases_.AddAuthor(author_name);
+
+                // берём новый id
+                for (auto& [id, name] : use_cases_.GetAuthors()) {
+                    if (name == author_name) {
+                        author_id = id;
+                        break;
+                    }
+                }
             }
         }
 
-        use_cases_.AddBook(year, title, author, tags);
+        output_ << "Enter tags (comma separated):" << std::endl;
+
+        std::string tags_line;
+        std::getline(input_, tags_line);
+
+        auto tags = util::NormalizeTags(tags_line);
+
+        use_cases_.AddBook(year, title, author_id, tags);
 
     } catch (...) {
         output_ << "Failed to add book" << std::endl;

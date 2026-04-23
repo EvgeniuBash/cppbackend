@@ -21,7 +21,6 @@ void UseCasesImpl::DeleteAuthor(const domain::AuthorId& id) {
     for (const auto& b : books) {
         books_.Delete(b.GetId());
     }
-
 }
 
 void UseCasesImpl::DeleteBook(const domain::BookId& id) {
@@ -30,45 +29,18 @@ void UseCasesImpl::DeleteBook(const domain::BookId& id) {
 
 void UseCasesImpl::AddBook(int year,
                           const std::string& title,
-                          const std::string& author_name,
+                          const std::string& author_id,
                           const std::vector<std::string>& tags) {
-
-    domain::AuthorId author_id;
-
-    for (const auto& a : authors_.GetAll()) {
-        if (a.GetName() == author_name) {
-            author_id = a.GetId();
-            break;
-        }
-    }
-
-    if (author_id == domain::AuthorId{}) {
-        domain::Author new_author{domain::AuthorId::New(), author_name};
-        author_id = new_author.GetId();
-        authors_.Save(new_author);
-    }
-
-    auto normalized_tags = util::NormalizeTags(
-        [&tags]() {
-            std::string s;
-            for (size_t i = 0; i < tags.size(); ++i) {
-                if (i) s += ",";
-                s += tags[i];
-            }
-            return s;
-        }()
-    );
 
     domain::Book book(
         domain::BookId::New(),
-        author_id,
+        domain::AuthorId::FromString(author_id),
         title,
         year,
-        normalized_tags
+        tags
     );
 
     books_.Save(book);
-
 }
 
 void UseCasesImpl::EditBook(const std::string& id,
@@ -146,11 +118,13 @@ std::vector<app::BookInfo> UseCasesImpl::GetBooksWithAuthors() const {
             b.GetTags()
         });
     }
+
     std::sort(result.begin(), result.end(),
-    [](const BookInfo& l, const BookInfo& r) {
-        return std::tie(l.title, l.author, l.publication_year) <
-               std::tie(r.title, r.author, r.publication_year);
-    });
+        [](const BookInfo& a, const BookInfo& b) {
+            if (a.title != b.title) return a.title < b.title;
+            if (a.author != b.author) return a.author < b.author;
+            return a.publication_year < b.publication_year;
+        });
 
     return result;
 }
