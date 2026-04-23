@@ -16,7 +16,11 @@ public:
     void AddAuthor(const std::string& name) override;
     void DeleteBook(const domain::BookId& id) override;
     void DeleteAuthor(const domain::AuthorId& id) override;
-    void EditAuthor(const domain::AuthorId& id, const std::string& new_name) override;
+
+    void EditBook(const std::string& id,
+                  const std::string& title,
+                  int year,
+                  const std::vector<std::string>& tags);
 
     void AddBook(int year,
                  const std::string& title,
@@ -24,15 +28,14 @@ public:
                  const std::vector<std::string>& tags) override;
 
     std::vector<std::pair<std::string, std::string>> GetAuthors() const override;
+
     std::vector<std::pair<std::string, int>> GetBooks() const override;
+
     std::vector<std::pair<std::string, int>> GetAuthorBooks(const std::string& author_id) const override;
+
     std::vector<BookInfo> GetBooksWithAuthors() const override;
     std::optional<BookInfo> GetBook(const std::string& title) const override;
-    
-    void EditBook(const std::string& id,
-              const std::string& new_title,
-              int new_year,
-              const std::vector<std::string>& new_tags) override;
+
 private:
     domain::AuthorRepository& authors_;
     domain::BookRepository& books_;
