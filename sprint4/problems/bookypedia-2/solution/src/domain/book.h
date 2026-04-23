@@ -18,19 +18,22 @@ public:
         : id_(std::move(id))
         , author_id_(std::move(author_id))
         , title_(std::move(title))
-        , pub_year_(pub_year) {
+        , pub_year_(pub_year)
+        , tags_(std::move(tags)) {
     }
 
     const BookId& GetId() const noexcept { return id_; }
     const AuthorId& GetAuthorId() const noexcept { return author_id_; }
     const std::string& GetTitle() const noexcept { return title_; }
     int GetPubYear() const noexcept { return pub_year_; }
+    const std::vector<std::string>& GetTags() const { return tags_; }
 
 private:
     BookId id_;
     AuthorId author_id_;
     std::string title_;
     int pub_year_;
+    std::vector<std::string> tags_;
 };
 
 class BookRepository {

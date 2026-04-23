@@ -51,7 +51,8 @@ void UseCasesImpl::AddBook(int year,
         domain::BookId::New(),
         author_id,
         title,
-        year
+        year,
+        tags
     );
 
     // ❗ если в Book есть теги — обязательно добавь это:
