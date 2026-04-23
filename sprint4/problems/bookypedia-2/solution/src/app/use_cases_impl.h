@@ -45,6 +45,7 @@ private:
         void Save(const domain::Book&) override {}
         std::vector<domain::Book> GetAll() const override { return {}; }
         std::vector<domain::Book> GetByAuthor(const domain::AuthorId&) const override { return {}; }
+        void Delete(const domain::BookId&) override {}
     } dummy_books_;
 };
 
