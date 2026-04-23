@@ -25,6 +25,7 @@ public:
         : connection_(conn) {}
 
     void Save(const domain::Book& book) override;
+    void Delete(const domain::BookId& id) override;
 
     std::vector<domain::Book> GetAll() const override;
     std::vector<domain::Book> GetByAuthor(const domain::AuthorId& author_id) const override;

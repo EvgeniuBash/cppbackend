@@ -21,6 +21,10 @@ void UseCasesImpl::DeleteBook(const domain::BookId&) {
 void UseCasesImpl::DeleteAuthor(const domain::AuthorId&) {
 }
 
+void UseCasesImpl::DeleteBook(const domain::BookId& id) {
+    books_.Delete(id);
+}
+
 void UseCasesImpl::AddBook(int year,
                           const std::string& title,
                           const std::string& author_name,
@@ -59,6 +63,32 @@ void UseCasesImpl::AddBook(int year,
     // book.SetTags(tags);
 
     books_.Save(book);
+}
+
+void UseCasesImpl::EditBook(const std::string& id,
+                           const std::string& title,
+                           int year,
+                           const std::vector<std::string>& tags) {
+    auto books = books_.GetAll();
+
+    auto it = std::find_if(books.begin(), books.end(),
+        [&](const domain::Book& b) {
+            return b.GetId().ToString() == id;
+        });
+
+    if (it == books.end()) {
+        return; 
+    }
+
+    domain::Book updated(
+        it->GetId(),
+        it->GetAuthorId(),
+        title.empty() ? it->GetTitle() : title,
+        year == 0 ? it->GetPubYear() : year,
+        tags.empty() ? it->GetTags() : tags
+    );
+
+    books_.Save(updated);
 }
 
 

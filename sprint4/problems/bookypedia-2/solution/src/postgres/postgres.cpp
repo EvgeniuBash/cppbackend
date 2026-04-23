@@ -54,52 +54,99 @@ CREATE TABLE IF NOT EXISTS book_tags (
 
 void BookRepositoryImpl::Save(const domain::Book& book) {
     pqxx::work work{connection_};
+
     work.exec_params(
         R"(
 INSERT INTO books (id, author_id, title, publication_year)
-VALUES ($1, $2, $3, $4);
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (id) DO UPDATE
+SET author_id=$2, title=$3, publication_year=$4;
 )"_zv,
         book.GetId().ToString(),
         book.GetAuthorId().ToString(),
         book.GetTitle(),
         book.GetPubYear()
     );
+
+    work.exec_params(
+        "DELETE FROM book_tags WHERE book_id=$1;",
+        book.GetId().ToString()
+    );
+
+    for (const auto& tag : book.GetTags()) {
+        work.exec_params(
+            "INSERT INTO book_tags (book_id, tag) VALUES ($1, $2);",
+            book.GetId().ToString(),
+            tag
+        );
+    }
+
     work.commit();
 }
 
-std::vector<domain::Book> postgres::BookRepositoryImpl::GetAll() const {
+std::vector<domain::Book> BookRepositoryImpl::GetAll() const {
     pqxx::work work{connection_};
-    auto res = work.exec("SELECT id, author_id, title, publication_year FROM books ORDER BY title;");
+    auto res = work.exec(
+        "SELECT id, author_id, title, publication_year FROM books ORDER BY title;"
+    );
 
     std::vector<domain::Book> result;
+
     for (const auto& row : res) {
+
+        pqxx::result tag_res = work.exec_params(
+            "SELECT tag FROM book_tags WHERE book_id=$1;",
+            row[0].c_str()
+        );
+
+        std::vector<std::string> tags;
+        for (const auto& t : tag_res) {
+            tags.push_back(t[0].c_str());
+        }
+
         result.emplace_back(
             domain::BookId::FromString(row[0].c_str()),
             domain::AuthorId::FromString(row[1].c_str()),
             row[2].c_str(),
             row[3].as<int>(),
-            std::vector<std::string>{}
+            tags
         );
     }
+
     return result;
 }
 
-std::vector<domain::Book> postgres::BookRepositoryImpl::GetByAuthor(const domain::AuthorId& author_id) const {
+std::vector<domain::Book> BookRepositoryImpl::GetByAuthor(const domain::AuthorId& author_id) const {
     pqxx::work work{connection_};
+
     auto res = work.exec_params(
         "SELECT id, author_id, title, publication_year FROM books WHERE author_id=$1 ORDER BY publication_year, title;",
-        author_id.ToString());
+        author_id.ToString()
+    );
 
     std::vector<domain::Book> result;
+
     for (const auto& row : res) {
+
+        pqxx::result tag_res = work.exec_params(
+            "SELECT tag FROM book_tags WHERE book_id=$1;",
+            row[0].c_str()
+        );
+
+        std::vector<std::string> tags;
+        for (const auto& t : tag_res) {
+            tags.push_back(t[0].c_str());
+        }
+
         result.emplace_back(
             domain::BookId::FromString(row[0].c_str()),
             domain::AuthorId::FromString(row[1].c_str()),
             row[2].c_str(),
             row[3].as<int>(),
-            std::vector<std::string>{}
+            tags
         );
     }
+
     return result;
 }
 
@@ -116,7 +163,16 @@ std::vector<domain::Author> AuthorRepositoryImpl::GetAll() const {
     return result;
 }
 
+void BookRepositoryImpl::Delete(const domain::BookId& id) {
+    pqxx::work work{connection_};
 
+    work.exec_params(
+        "DELETE FROM books WHERE id=$1;",
+        id.ToString()
+    );
+
+    work.commit();
+}
 
 
 }  // namespace postgres
