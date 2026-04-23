@@ -1,4 +1,5 @@
 #include "use_cases_impl.h"
+#include <boost/algorithm/string.hpp>
 
 #include "../domain/author.h"
 
@@ -82,6 +83,39 @@ void UseCasesImpl::EditBook(const std::string& id,
     );
 
     books_.Save(updated);
+}
+
+void UseCasesImpl::EditAuthor(const domain::AuthorId& id, const std::string& new_name) {
+    // Находим автора
+    auto authors = authors_.GetAll();
+    auto it = std::find_if(authors.begin(), authors.end(),
+        [&](const domain::Author& a) { return a.GetId() == id; });
+    
+    if (it != authors.end()) {
+        // Создаём автора с тем же ID и новым именем
+        domain::Author updated_author(id, new_name);
+        authors_.Save(updated_author);
+    }
+}
+
+void UseCasesImpl::EditBook(const domain::BookId& id,
+                           const std::string& new_title,
+                           int new_year,
+                           const std::vector<std::string>& new_tags) {
+    auto books = books_.GetAll();
+    
+    auto it = std::find_if(books.begin(), books.end(),
+        [&](const domain::Book& b) { return b.GetId() == id; });
+    
+    if (it != books.end()) {
+        // Если значения пустые, оставляем старые
+        std::string title = new_title.empty() ? it->GetTitle() : new_title;
+        int year = (new_year == 0) ? it->GetPubYear() : new_year;
+        const auto& tags = new_tags.empty() ? it->GetTags() : new_tags;
+        
+        domain::Book updated_book(id, it->GetAuthorId(), title, year, tags);
+        books_.Save(updated_book);
+    }
 }
 
 

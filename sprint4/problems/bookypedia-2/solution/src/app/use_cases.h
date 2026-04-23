@@ -33,6 +33,12 @@ public:
     virtual void DeleteAuthor(const domain::AuthorId& id) = 0;
     virtual std::optional<BookInfo> GetBook(const std::string& title) const = 0;
 
+    virtual void EditAuthor(const domain::AuthorId& id, const std::string& new_name) = 0;
+    virtual void EditBook(const domain::BookId& id, 
+                         const std::string& new_title,
+                         int new_year,
+                         const std::vector<std::string>& new_tags) = 0;
+
 protected:
     ~UseCases() = default;
 };
