@@ -15,7 +15,14 @@ void UseCasesImpl::AddAuthor(const std::string& name) {
     authors_.Save({AuthorId::New(), name});
 }
 
-void UseCasesImpl::DeleteAuthor(const domain::AuthorId&) {
+void UseCasesImpl::DeleteAuthor(const domain::AuthorId& id) {
+    auto books = books_.GetByAuthor(id);
+
+    for (const auto& b : books) {
+        books_.Delete(b.GetId());
+    }
+
+    authors_.Delete(id);
 }
 
 void UseCasesImpl::DeleteBook(const domain::BookId& id) {
@@ -42,20 +49,27 @@ void UseCasesImpl::AddBook(int year,
         authors_.Save(new_author);
     }
 
+    auto normalized_tags = util::NormalizeTags(
+        [&tags]() {
+            std::string s;
+            for (size_t i = 0; i < tags.size(); ++i) {
+                if (i) s += ",";
+                s += tags[i];
+            }
+            return s;
+        }()
+    );
+
     domain::Book book(
         domain::BookId::New(),
         author_id,
         title,
         year,
-        tags
+        normalized_tags
     );
 
     books_.Save(book);
 
-    // ⬇️ если есть репозиторий тегов — добавляй сюда
-    // for (const auto& tag : tags) {
-    //     book_tags_.Save(book.GetId(), tag);
-    // }
 }
 
 void UseCasesImpl::EditBook(const std::string& id,
@@ -133,6 +147,11 @@ std::vector<app::BookInfo> UseCasesImpl::GetBooksWithAuthors() const {
             b.GetTags()
         });
     }
+    std::sort(result.begin(), result.end(),
+    [](const BookInfo& l, const BookInfo& r) {
+        return std::tie(l.title, l.author, l.publication_year) <
+               std::tie(r.title, r.author, r.publication_year);
+    });
 
     return result;
 }

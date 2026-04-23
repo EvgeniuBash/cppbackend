@@ -145,22 +145,76 @@ bool View::ShowBook(std::istream& cmd_input) const {
     std::getline(cmd_input, title);
     boost::algorithm::trim(title);
 
-    auto book = use_cases_.GetBook(title);
+    auto books = use_cases_.GetBooksWithAuthors();
 
-    if (!book) {
-        output_ << "Book not found" << std::endl;
+    std::vector<app::BookInfo> found;
+
+    for (const auto& b : books) {
+        if (title.empty() || b.title == title) {
+            found.push_back(b);
+        }
+    }
+
+    if (found.empty()) {
         return true;
     }
 
-    output_ << "Title: " << book->title << std::endl;
-    output_ << "Author: " << book->author << std::endl;
-    output_ << "Publication year: " << book->publication_year << std::endl;
+    if (found.size() > 1) {
+        for (size_t i = 0; i < found.size(); ++i) {
+            output_ << i + 1 << " "
+                    << found[i].title << " by "
+                    << found[i].author << ", "
+                    << found[i].publication_year << std::endl;
+        }
 
-    if (!book->tags.empty()) {
+        output_ << "Enter the book # or empty line to cancel:" << std::endl;
+
+        std::string line;
+        if (!std::getline(input_, line) || line.empty()) {
+            return true;
+        }
+
+        int idx = std::stoi(line) - 1;
+
+        if (idx < 0 || idx >= (int)found.size()) {
+            return true;
+        }
+
+        auto& book = found[idx];
+
+        output_ << "Title: " << book.title << std::endl;
+        output_ << "Author: " << book.author << std::endl;
+        output_ << "Publication year: " << book.publication_year << std::endl;
+
+        if (!book.tags.empty()) {
+            auto tags = book.tags;
+            std::sort(tags.begin(), tags.end());
+
+            output_ << "Tags: ";
+            for (size_t i = 0; i < tags.size(); ++i) {
+                if (i) output_ << ", ";
+                output_ << tags[i];
+            }
+            output_ << std::endl;
+        }
+
+        return true;
+    }
+
+    auto& book = found[0];
+
+    output_ << "Title: " << book.title << std::endl;
+    output_ << "Author: " << book.author << std::endl;
+    output_ << "Publication year: " << book.publication_year << std::endl;
+
+    if (!book.tags.empty()) {
+        auto tags = book.tags;
+        std::sort(tags.begin(), tags.end());
+
         output_ << "Tags: ";
-        for (size_t i = 0; i < book->tags.size(); ++i) {
+        for (size_t i = 0; i < tags.size(); ++i) {
             if (i) output_ << ", ";
-            output_ << book->tags[i];
+            output_ << tags[i];
         }
         output_ << std::endl;
     }
@@ -173,14 +227,43 @@ bool View::DeleteBook(std::istream& cmd_input) const {
     std::getline(cmd_input, title);
     boost::algorithm::trim(title);
 
-    for (const auto& b : use_cases_.GetBooksWithAuthors()) {
-        if (b.title == title) {
-            use_cases_.DeleteBook(domain::BookId::FromString(b.id));
-            return true;
+    auto books = use_cases_.GetBooksWithAuthors();
+
+    std::vector<app::BookInfo> found;
+
+    for (const auto& b : books) {
+        if (title.empty() || b.title == title) {
+            found.push_back(b);
         }
     }
 
-    output_ << "Book not found" << std::endl;
+    if (found.empty()) {
+        output_ << "Failed to delete book" << std::endl;
+        return true;
+    }
+
+    for (size_t i = 0; i < found.size(); ++i) {
+        output_ << i + 1 << " "
+                << found[i].title << " by "
+                << found[i].author << ", "
+                << found[i].publication_year << std::endl;
+    }
+
+    output_ << "Enter the book # or empty line to cancel:" << std::endl;
+
+    std::string line;
+    if (!std::getline(input_, line) || line.empty()) {
+        return true;
+    }
+
+    int idx = std::stoi(line) - 1;
+
+    if (idx < 0 || idx >= (int)found.size()) {
+        output_ << "Failed to delete book" << std::endl;
+        return true;
+    }
+
+    use_cases_.DeleteBook(domain::BookId::FromString(found[idx].id));
     return true;
 }
 
