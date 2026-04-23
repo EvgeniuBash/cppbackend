@@ -300,6 +300,8 @@ public:
                 }
             }
 
+            constexpr double PLAYER_RADIUS = 0.3;
+
             class Provider : public collision_detector::ItemGathererProvider {
             public:
                 Provider(const std::vector<model::Player*>& players,
@@ -329,7 +331,6 @@ public:
                 }
 
             private:
-                constexpr double PLAYER_RADIUS = 0.3;
                 const std::vector<model::Player*>& players_;
                 const std::vector<model::LostObject>& items_;
             };
@@ -588,7 +589,7 @@ private:
     void SendBadRequest(const http::request<http::string_body>& req,
                         Send&& send,
                         const std::string& msg) {
-        sendError(req, send, http::status::bad_request, "invalidArgument", msg);
+        SendError(req, send, http::status::bad_request, "invalidArgument", msg);
     }
 
     template <typename Send>
@@ -596,7 +597,7 @@ private:
                       Send&& send,
                       const std::string& code,
                       const std::string& msg) {
-        sendError(req, send, http::status::not_found, code, msg);
+        SendError(req, send, http::status::not_found, code, msg);
     }
 
     template <typename Send>
@@ -604,7 +605,7 @@ private:
                           Send&& send,
                           const std::string& code,
                           const std::string& msg) {
-        sendError(req, send, http::status::unauthorized, code, msg);
+        SendError(req, send, http::status::unauthorized, code, msg);
     }
 
     template <typename Send>
