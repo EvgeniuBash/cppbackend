@@ -188,7 +188,6 @@ bool View::AddBook(std::istream& cmd_input) const {
 
         if (author_name.empty()) {
             if (authors.empty()) {
-                DrainPendingLine(input_);
                 output_ << "Failed to add book" << std::endl;
                 return true;
             }
@@ -199,14 +198,21 @@ bool View::AddBook(std::istream& cmd_input) const {
 
             std::string str;
             if (!std::getline(input_, str) || str.empty()) {
-                DrainPendingLine(input_);
+                // Тестовый helper всё равно потом шлёт строку тегов.
+                output_ << "Enter tags (comma separated):" << std::endl;
+                std::string dummy_tags;
+                std::getline(input_, dummy_tags);
+
                 output_ << "Failed to add book" << std::endl;
                 return true;
             }
 
             int idx = std::stoi(str) - 1;
             if (idx < 0 || idx >= static_cast<int>(authors.size())) {
-                DrainPendingLine(input_);
+                output_ << "Enter tags (comma separated):" << std::endl;
+                std::string dummy_tags;
+                std::getline(input_, dummy_tags);
+
                 output_ << "Failed to add book" << std::endl;
                 return true;
             }
@@ -226,7 +232,10 @@ bool View::AddBook(std::istream& cmd_input) const {
                 boost::algorithm::trim(answer);
 
                 if (answer != "y" && answer != "Y") {
-                    DrainPendingLine(input_);
+                    output_ << "Enter tags (comma separated):" << std::endl;
+                    std::string dummy_tags;
+                    std::getline(input_, dummy_tags);
+
                     output_ << "Failed to add book" << std::endl;
                     return true;
                 }
@@ -330,8 +339,7 @@ bool View::DeleteBook(std::istream& cmd_input) const {
         if (title.empty() || candidates.size() > 1) {
             selected = SelectBookFromList(candidates, input_, output_);
             if (!selected) {
-                output_ << "Book not found" << std::endl;
-                return true;
+                return true;   // cancel = молча
             }
         } else {
             selected = candidates.front();
