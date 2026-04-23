@@ -79,7 +79,8 @@ std::vector<domain::Book> postgres::BookRepositoryImpl::GetAll() const {
             row[2].c_str(),
             row[3].as<int>(),
             std::vector<std::string>{}
-    );
+        );
+    }
     return result;
 }
 
@@ -97,7 +98,8 @@ std::vector<domain::Book> postgres::BookRepositoryImpl::GetByAuthor(const domain
             row[2].c_str(),
             row[3].as<int>(),
             std::vector<std::string>{}
-    );
+        );
+    }
     return result;
 }
 
