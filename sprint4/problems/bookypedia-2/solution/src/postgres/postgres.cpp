@@ -77,8 +77,9 @@ std::vector<domain::Book> BookRepositoryImpl::GetAll() const {
             domain::BookId::FromString(row[0].c_str()),
             domain::AuthorId::FromString(row[1].c_str()),
             row[2].c_str(),
-            row[3].as<int>());
-    }
+            row[3].as<int>(),
+            std::vector<std::string>{}
+    };
     return result;
 }
 
@@ -94,8 +95,9 @@ std::vector<domain::Book> BookRepositoryImpl::GetByAuthor(const domain::AuthorId
             domain::BookId::FromString(row[0].c_str()),
             domain::AuthorId::FromString(row[1].c_str()),
             row[2].c_str(),
-            row[3].as<int>());
-    }
+            row[3].as<int>(),
+            std::vector<std::string>{}
+    };
     return result;
 }
 
