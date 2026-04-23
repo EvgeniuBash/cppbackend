@@ -1,8 +1,8 @@
 #include "use_cases_impl.h"
 
-#include "../domain/author.h"
 #include <algorithm>
 #include <tuple>
+
 #include <boost/algorithm/string/trim.hpp>
 
 namespace app {
@@ -24,6 +24,7 @@ bool UseCasesImpl::EditAuthor(const std::string& id, const std::string& new_name
     if (trimmed.empty()) {
         return false;
     }
+
     return authors_.Edit(AuthorId::FromString(id), trimmed);
 }
 
@@ -37,9 +38,9 @@ void UseCasesImpl::AddBook(int year,
                            const std::vector<std::string>& tags) {
     domain::AuthorId author_id;
 
-    for (const auto& a : authors_.GetAll()) {
-        if (a.GetName() == author_name) {
-            author_id = a.GetId();
+    for (const auto& author : authors_.GetAll()) {
+        if (author.GetName() == author_name) {
+            author_id = author.GetId();
             break;
         }
     }
@@ -86,7 +87,7 @@ bool UseCasesImpl::EditBook(const std::string& id,
         it->GetAuthorId(),
         new_title.empty() ? it->GetTitle() : new_title,
         year == 0 ? it->GetPubYear() : year,
-        tags.empty() ? it->GetTags() : tags
+        tags
     );
 
     return books_.Update(updated);
@@ -116,9 +117,9 @@ std::vector<std::pair<std::string, int>> UseCasesImpl::GetAuthorBooks(const std:
     return result;
 }
 
-std::vector<app::BookInfo> UseCasesImpl::GetBooksWithAuthors() const {
-    std::vector<app::BookInfo> result;
-    auto authors = authors_.GetAll();
+std::vector<BookInfo> UseCasesImpl::GetBooksWithAuthors() const {
+    std::vector<BookInfo> result;
+    const auto authors = authors_.GetAll();
 
     for (const auto& b : books_.GetAll()) {
         auto it = std::find_if(authors.begin(), authors.end(),
@@ -146,22 +147,19 @@ std::vector<app::BookInfo> UseCasesImpl::GetBooksWithAuthors() const {
     return result;
 }
 
-std::optional<app::BookInfo> UseCasesImpl::GetBook(const std::string& title) const {
-    for (const auto& b : GetBooksWithAuthors()) {
-        if (b.title == title) {
-            return b;
-        }
-    }
-    return std::nullopt;
-}
+std::optional<BookInfo> UseCasesImpl::GetBook(const std::string& title) const {
+    const auto books = GetBooksWithAuthors();
 
-std::optional<app::BookInfo> UseCasesImpl::GetBookById(const std::string& id) const {
-    for (const auto& b : GetBooksWithAuthors()) {
-        if (b.id == id) {
-            return b;
-        }
+    auto it = std::find_if(books.begin(), books.end(),
+        [&](const BookInfo& book) {
+            return book.title == title;
+        });
+
+    if (it == books.end()) {
+        return std::nullopt;
     }
-    return std::nullopt;
+
+    return *it;
 }
 
 }  // namespace app

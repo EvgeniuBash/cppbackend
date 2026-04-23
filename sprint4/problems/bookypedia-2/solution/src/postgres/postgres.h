@@ -1,6 +1,6 @@
 #pragma once
+
 #include <pqxx/connection>
-#include <pqxx/transaction>
 
 #include "../domain/author.h"
 #include "../domain/book.h"
@@ -10,7 +10,8 @@ namespace postgres {
 class AuthorRepositoryImpl : public domain::AuthorRepository {
 public:
     explicit AuthorRepositoryImpl(pqxx::connection& conn)
-        : connection_(conn) {}
+        : connection_(conn) {
+    }
 
     void Save(const domain::Author& author) override;
     std::vector<domain::Author> GetAll() const override;
@@ -24,14 +25,14 @@ private:
 class BookRepositoryImpl : public domain::BookRepository {
 public:
     explicit BookRepositoryImpl(pqxx::connection& conn)
-        : connection_(conn) {}
+        : connection_(conn) {
+    }
 
     void Save(const domain::Book& book) override;
     bool Update(const domain::Book& book) override;
-    bool Delete(const domain::BookId& id) override;
-
     std::vector<domain::Book> GetAll() const override;
     std::vector<domain::Book> GetByAuthor(const domain::AuthorId& author_id) const override;
+    bool Delete(const domain::BookId& id) override;
 
 private:
     pqxx::connection& connection_;

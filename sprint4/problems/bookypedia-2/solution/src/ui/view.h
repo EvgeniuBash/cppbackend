@@ -1,4 +1,5 @@
 #pragma once
+
 #include <iosfwd>
 #include <optional>
 #include <string>
@@ -14,12 +15,6 @@ class UseCases;
 
 namespace ui {
 namespace detail {
-
-struct AddBookParams {
-    std::string title;
-    std::string author_id;
-    int publication_year = 0;
-};
 
 struct AuthorInfo {
     std::string id;
@@ -40,17 +35,20 @@ public:
 private:
     bool AddAuthor(std::istream& cmd_input) const;
     bool AddBook(std::istream& cmd_input) const;
+
     bool ShowAuthors() const;
     bool ShowBooks() const;
     bool ShowAuthorBooks() const;
     bool ShowBook(std::istream& cmd_input) const;
-    bool DeleteBook(std::istream& cmd_input) const;
-    bool EditBook(std::istream& cmd_input) const;
-    bool DeleteAuthor(std::istream& cmd_input) const;
-    bool EditAuthor(std::istream& cmdinput) const;
 
-    std::optional<detail::AddBookParams> GetBookParams(std::istream& cmd_input) const;
+    bool DeleteBook(std::istream& cmd_input) const;
+    bool DeleteAuthor(std::istream& cmd_input) const;
+
+    bool EditBook(std::istream& cmd_input) const;
+    bool EditAuthor(std::istream& cmd_input) const;
+
     std::optional<std::string> SelectAuthor() const;
+
     std::vector<detail::AuthorInfo> GetAuthors() const;
     std::vector<detail::BookInfo> GetBooks() const;
     std::vector<detail::BookInfo> GetAuthorBooks(const std::string& author_id) const;
