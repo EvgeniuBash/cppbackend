@@ -17,6 +17,7 @@ add_library(game_lib STATIC
     src/loot_generator.cpp
     src/logger.cpp
     src/collision_detector.cpp
+    src/db.cpp
 )
 
 target_include_directories(game_lib PUBLIC
@@ -25,6 +26,7 @@ target_include_directories(game_lib PUBLIC
 
 target_link_libraries(game_lib PUBLIC
     CONAN_PKG::boost
+    CONAN_PKG::libpqxx
     Threads::Threads
 )
 
