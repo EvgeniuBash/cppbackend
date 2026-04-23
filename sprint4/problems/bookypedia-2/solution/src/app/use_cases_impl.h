@@ -20,7 +20,7 @@ public:
     void EditBook(const std::string& id,
                   const std::string& title,
                   int year,
-                  const std::vector<std::string>& tags);
+                  const std::vector<std::string>& tags) override;
 
     void AddBook(int year,
                  const std::string& title,
