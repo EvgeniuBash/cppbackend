@@ -61,14 +61,14 @@ public:
     void AddScore(int value) { score_ += value; }
     void ResetIdleTime() { idle_time_ = std::chrono::milliseconds{0}; }
     void Tick(std::chrono::milliseconds delta) {
-    play_time_ += delta;
+        play_time_ += delta;
 
-    if (IsIdle()) {
-        idle_time_ += delta;
-    } else {
-        idle_time_ = std::chrono::milliseconds{0};
+        if (IsIdle()) {
+            idle_time_ += delta;
+        } else {
+            idle_time_ = std::chrono::milliseconds{0};
+        }
     }
-}
 
 private:
     PlayerId id_;
@@ -81,8 +81,8 @@ private:
     std::vector<BagItem> bag_;
     int score_ = 0;
     Direction dir_ = Direction::NORTH;
-    std::chrono::milliseconds play_time_{0};
-    std::chrono::milliseconds idle_time_{0};
+    Time play_time_{0};
+    Time idle_time_{0};
 };
 
 class PlayerManager {

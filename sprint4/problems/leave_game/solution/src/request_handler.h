@@ -249,26 +249,23 @@ private:
     }
 
     template <typename Body, typename Allocator, typename Send>
-void SendBadRequestInvalidEndpoint(
-    const boost::beast::http::request<Body, boost::beast::http::basic_fields<Allocator>>& req,
-    Send&& send
-) {
-    namespace http = boost::beast::http;
-    namespace json = boost::json;
+    void SendBadRequestInvalidEndpoint(const boost::beast::http::request<Body, boost::beast::http::basic_fields<Allocator>>& req,Send&& send) {
+        namespace http = boost::beast::http;
+        namespace json = boost::json;
 
-    json::object body{
-        {"code", "badRequest"},
-        {"message", "Invalid endpoint"}
-    };
+        json::object body{
+            {"code", "badRequest"},
+            {"message", "Invalid endpoint"}
+        };
 
-    http::response<http::string_body> res{http::status::bad_request, req.version()};
-    res.set(http::field::content_type, "application/json");
-    res.set(http::field::cache_control, "no-cache");
-    res.body() = json::serialize(body);
-    res.prepare_payload();
+        http::response<http::string_body> res{http::status::bad_request, req.version()};
+        res.set(http::field::content_type, "application/json");
+        res.set(http::field::cache_control, "no-cache");
+        res.body() = json::serialize(body);
+        res.prepare_payload();
 
-    send(std::move(res));
-}
+        send(std::move(res));
+    }
 
     template <typename Send>
     void HandleRecords(const auto& req, Send&& send) {

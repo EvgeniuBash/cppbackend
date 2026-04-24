@@ -164,8 +164,13 @@ public:
 
     void AddOffice(Office office);
 
-    double GetDogSpeed() const { return dog_speed_; }
-    void SetDogSpeed(double speed) { dog_speed_ = speed; }
+    double GetDogSpeed() const { 
+        return dog_speed_; 
+    }
+
+    void SetDogSpeed(double speed) { 
+        dog_speed_ = speed; 
+    }
 
     void SetLootTypesCount(size_t count) {
         loot_types_count_ = count;

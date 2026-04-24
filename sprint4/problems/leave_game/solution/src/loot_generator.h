@@ -4,9 +4,6 @@
 
 namespace loot_gen {
 
-/*
- *  Генератор трофеев
- */
 class LootGenerator {
 public:
     using RandomGenerator = std::function<double()>;

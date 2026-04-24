@@ -258,14 +258,8 @@ public:
                     SendInvalidArgument(req, send, "Invalid move");
                     return;
                 }
-player->SetSpeed(new_speed);
-
-/*
- * Любая валидная команда игрока — это активность:
- * L/R/U/D и даже "".
- * Команда "" означает "остановиться сейчас", idle должен начинаться с нуля.
- */
-player->ResetIdleTime();
+                player->SetSpeed(new_speed);
+                player->ResetIdleTime();
 
                 SendOkJson(req, send, json::object{});
             });
@@ -316,44 +310,30 @@ player->ResetIdleTime();
 
         SendOkJson(req, send, json::object{});
     }
-
-    /*
-     * Эту функцию теперь вызывает и ручной /api/v1/game/tick,
-     * и автоматический Ticker из main.cpp.
-     */
-void ProcessTick(std::chrono::milliseconds delta) {
-    if (delta.count() < 0) {
-        return;
-    }
-
-    /*
-     * ВАЖНО:
-     * Сначала обновляем play_time / idle_time и удаляем только тех,
-     * кто уже был idle на момент начала тика.
-     *
-     * Иначе баг:
-     * собака двигалась -> за один большой tick дошла до края дороги -> speed стал 0
-     * -> старый код засчитывал ВЕСЬ tick как idle
-     * -> игрок удалялся уже на r_time / 2.
-     */
-    RetireIdlePlayers(delta);
-
-    const double dt = std::chrono::duration<double>(delta).count();
-
-    for (const auto& map : game_.GetMaps()) {
-        auto players_on_map = players_.GetPlayersByMap(map.GetId());
-
-        for (auto* player : players_on_map) {
-            player->SetPrevPosition(player->GetPosition());
-            MovePlayerAlongRoad(player, dt);
+  
+    void ProcessTick(std::chrono::milliseconds delta) {
+        if (delta.count() < 0) {
+            return;
         }
 
-        CollectLoot(map, players_on_map);
-        DeliverLootToOffices(map, players_on_map);
+        RetireIdlePlayers(delta);
 
-        game_.GenerateLoot(delta, map, players_on_map.size());
+        const double dt = std::chrono::duration<double>(delta).count();
+
+        for (const auto& map : game_.GetMaps()) {
+            auto players_on_map = players_.GetPlayersByMap(map.GetId());
+
+            for (auto* player : players_on_map) {
+                player->SetPrevPosition(player->GetPosition());
+                MovePlayerAlongRoad(player, dt);
+            }
+
+            CollectLoot(map, players_on_map);
+            DeliverLootToOffices(map, players_on_map);
+
+            game_.GenerateLoot(delta, map, players_on_map.size());
+        }
     }
-}
 
     template <typename Send>
     void HandleMapInfo(const http::request<http::string_body>& req,
@@ -742,45 +722,45 @@ private:
         player.ClearBag();
     }
 
-void RetireIdlePlayers(std::chrono::milliseconds delta) {
-    std::vector<model::PlayerId> retired_players;
-    std::vector<records::Record> records_to_save;
+    void RetireIdlePlayers(std::chrono::milliseconds delta) {
+        std::vector<model::PlayerId> retired_players;
+        std::vector<records::Record> records_to_save;
 
-    const double retirement_seconds =
-        std::chrono::duration<double>(game_.GetDogRetirementTime()).count();
+        const double retirement_seconds =
+            std::chrono::duration<double>(game_.GetDogRetirementTime()).count();
 
-    for (auto* player : players_.GetAllPlayers()) {
-        player->Tick(delta);
+        for (auto* player : players_.GetAllPlayers()) {
+            player->Tick(delta);
 
-        const double idle_seconds = player->GetIdleTime();
+            const double idle_seconds = player->GetIdleTime();
 
-        if (idle_seconds >= retirement_seconds) {
-            records_to_save.push_back({
-                player->GetName(),
-                player->GetScore(),
-                std::chrono::duration<double>(player->GetPlayTime()).count()
-            });
+            if (idle_seconds >= retirement_seconds) {
+                records_to_save.push_back({
+                    player->GetName(),
+                    player->GetScore(),
+                    std::chrono::duration<double>(player->GetPlayTime()).count()
+                });
 
-            retired_players.push_back(player->GetId());
+                retired_players.push_back(player->GetId());
+            }
+        }
+
+        if (!records_to_save.empty()) {
+            try {
+                records_repo_.SaveMany(records_to_save);
+            } catch (const std::exception& e) {
+                std::cerr << "SaveMany failed: " << e.what() << std::endl;
+            }
+        }
+
+        for (auto id : retired_players) {
+            try {
+                players_.RemovePlayer(id);
+            } catch (const std::exception& e) {
+                std::cerr << "RemovePlayer failed: " << e.what() << std::endl;
+            }
         }
     }
-
-    if (!records_to_save.empty()) {
-        try {
-            records_repo_.SaveMany(records_to_save);
-        } catch (const std::exception& e) {
-            std::cerr << "SaveMany failed: " << e.what() << std::endl;
-        }
-    }
-
-    for (auto id : retired_players) {
-        try {
-            players_.RemovePlayer(id);
-        } catch (const std::exception& e) {
-            std::cerr << "RemovePlayer failed: " << e.what() << std::endl;
-        }
-    }
-}
 
     template <typename Body, typename Fields>
     static bool IsJsonContentType(const http::request<Body, Fields>& req) {
