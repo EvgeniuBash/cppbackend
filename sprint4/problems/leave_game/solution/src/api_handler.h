@@ -237,7 +237,6 @@ public:
 
                 const double s = map->GetDogSpeed();
 
-                const bool was_idle = player->IsIdle();
 
                 model::Speed new_speed{0.0, 0.0};
 
@@ -259,20 +258,14 @@ public:
                     SendInvalidArgument(req, send, "Invalid move");
                     return;
                 }
+player->SetSpeed(new_speed);
 
-                player->SetSpeed(new_speed);
-
-                /*
-                 * ВАЖНО:
-                 * Если пришла команда движения — игрок больше не idle.
-                 * Если пришла команда остановки после движения — idle начинается с нуля.
-                 * Если игрок и так стоял, а ему снова прислали "" — idle не сбрасываем.
-                 */
-                if (!move.empty()) {
-                    player->ResetIdleTime();
-                } else if (!was_idle && player->IsIdle()) {
-                    player->ResetIdleTime();
-                }
+/*
+ * Любая валидная команда игрока — это активность:
+ * L/R/U/D и даже "".
+ * Команда "" означает "остановиться сейчас", idle должен начинаться с нуля.
+ */
+player->ResetIdleTime();
 
                 SendOkJson(req, send, json::object{});
             });
@@ -328,29 +321,39 @@ public:
      * Эту функцию теперь вызывает и ручной /api/v1/game/tick,
      * и автоматический Ticker из main.cpp.
      */
-    void ProcessTick(std::chrono::milliseconds delta) {
-        if (delta.count() < 0) {
-            return;
-        }
-
-        const double dt = std::chrono::duration<double>(delta).count();
-
-        for (const auto& map : game_.GetMaps()) {
-            auto players_on_map = players_.GetPlayersByMap(map.GetId());
-
-            for (auto* player : players_on_map) {
-                player->SetPrevPosition(player->GetPosition());
-                MovePlayerAlongRoad(player, dt);
-            }
-
-            CollectLoot(map, players_on_map);
-            DeliverLootToOffices(map, players_on_map);
-
-            game_.GenerateLoot(delta, map, players_on_map.size());
-        }
-
-        RetireIdlePlayers(delta);
+void ProcessTick(std::chrono::milliseconds delta) {
+    if (delta.count() < 0) {
+        return;
     }
+
+    /*
+     * ВАЖНО:
+     * Сначала обновляем play_time / idle_time и удаляем только тех,
+     * кто уже был idle на момент начала тика.
+     *
+     * Иначе баг:
+     * собака двигалась -> за один большой tick дошла до края дороги -> speed стал 0
+     * -> старый код засчитывал ВЕСЬ tick как idle
+     * -> игрок удалялся уже на r_time / 2.
+     */
+    RetireIdlePlayers(delta);
+
+    const double dt = std::chrono::duration<double>(delta).count();
+
+    for (const auto& map : game_.GetMaps()) {
+        auto players_on_map = players_.GetPlayersByMap(map.GetId());
+
+        for (auto* player : players_on_map) {
+            player->SetPrevPosition(player->GetPosition());
+            MovePlayerAlongRoad(player, dt);
+        }
+
+        CollectLoot(map, players_on_map);
+        DeliverLootToOffices(map, players_on_map);
+
+        game_.GenerateLoot(delta, map, players_on_map.size());
+    }
+}
 
     template <typename Send>
     void HandleMapInfo(const http::request<http::string_body>& req,
