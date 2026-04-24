@@ -44,7 +44,7 @@ public:
         , static_root_(std::move(static_root))
         , extra_data_(extra_data)
         , records_repo_(records_repo)
-        , api_handler_(game_, players_, extra_data_, records_repo_, randomize_spawn)
+        , api_handler_(game_, players_, extra_data_, randomize_spawn, records_repo_)
         , tick_period_(tick_period) {}
 
     template <typename Body, typename Allocator, typename Send>
