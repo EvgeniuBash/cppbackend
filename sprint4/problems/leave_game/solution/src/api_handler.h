@@ -12,6 +12,7 @@
 #include "map_extra_data.h"
 #include "collision_detector.h"
 #include "records.h"
+#include "logger.h"
 
 namespace http_handler {
 
@@ -274,154 +275,150 @@ public:
             });
     }
 
-    template <typename Body, typename Allocator, typename Send>
-    void HandleTick(http::request<Body, http::basic_fields<Allocator>>& req,
-                    Send&& send) {
-        using namespace std::chrono;
+template <typename Body, typename Allocator, typename Send>
+void HandleTick(http::request<Body, http::basic_fields<Allocator>>& req,
+                Send&& send) {
+    using namespace std::chrono;
 
-        if (req.method() != http::verb::post) {
-            SendMethodNotAllowed(req, send, "POST");
-            return;
+    if (req.method() != http::verb::post) {
+        SendMethodNotAllowed(req, send, "POST");
+        return;
+    }
+
+    if (req[http::field::content_type] != "application/json") {
+        SendInvalidArgument(req, send, "Invalid content type");
+        return;
+    }
+
+    json::value body;
+    try {
+        body = json::parse(req.body());
+    } catch (...) {
+        SendInvalidArgument(req, send, "Failed to parse tick request JSON");
+        return;
+    }
+
+    if (!body.is_object()) {
+        SendInvalidArgument(req, send, "Invalid tick request");
+        return;
+    }
+
+    auto& obj = body.as_object();
+
+    if (!obj.contains("timeDelta") || !obj.at("timeDelta").is_int64()) {
+        SendInvalidArgument(req, send, "Invalid timeDelta");
+        return;
+    }
+
+    int64_t delta_ms = obj.at("timeDelta").as_int64();
+    if (delta_ms < 0) {
+        SendInvalidArgument(req, send, "Invalid timeDelta");
+        return;
+    }
+
+    const double dt = delta_ms / 1000.0;
+    const milliseconds delta{delta_ms};
+
+    for (const auto& map : game_.GetMaps()) {
+        auto players = players_.GetPlayersByMap(map.GetId());
+
+        for (auto* player : players) {
+            player->SetPrevPosition(player->GetPosition());
+            MovePlayerAlongRoad(player, dt);
         }
 
-        if (req[http::field::content_type] != "application/json") {
-            SendInvalidArgument(req, send, "Invalid content type");
-            return;
+        std::vector<model::LostObject> items;
+        for (const auto& [id, obj] : game_.GetLostObjects()) {
+            if (obj.map_id == map.GetId()) {
+                items.push_back(obj);
+            }
         }
 
-        json::value body;
-        try {
-            body = json::parse(req.body());
-        } catch (...) {
-            SendInvalidArgument(req, send, "Failed to parse tick request JSON");
-            return;
-        }
+        class Provider : public collision_detector::ItemGathererProvider {
+        public:
+            Provider(const std::vector<model::Player*>& players,
+                     const std::vector<model::LostObject>& items)
+                : players_(players)
+                , items_(items) {}
 
-        if (!body.is_object()) {
-            SendInvalidArgument(req, send, "Invalid tick request");
-            return;
-        }
-
-        auto& obj = body.as_object();
-
-        if (!obj.contains("timeDelta") || !obj.at("timeDelta").is_int64()) {
-            SendInvalidArgument(req, send, "Invalid timeDelta");
-            return;
-        }
-
-        int64_t delta_ms = obj.at("timeDelta").as_int64();
-        if (delta_ms < 0) {
-            SendInvalidArgument(req, send, "Invalid timeDelta");
-            return;
-        }
-
-        const double dt = delta_ms / 1000.0;
-        const milliseconds delta{delta_ms};
-
-        for (const auto& map : game_.GetMaps()) {
-            auto players = players_.GetPlayersByMap(map.GetId());
-
-            for (auto* player : players) {
-                player->SetPrevPosition(player->GetPosition());
-                MovePlayerAlongRoad(player, dt);
+            size_t ItemsCount() const override {
+                return items_.size();
             }
 
-            std::vector<model::LostObject> items;
-            for (const auto& [id, obj] : game_.GetLostObjects()) {
-                if (obj.map_id == map.GetId()) {
-                    items.push_back(obj);
-                }
+            collision_detector::Item GetItem(size_t idx) const override {
+                const auto& obj = items_[idx];
+                return {{obj.pos.x, obj.pos.y}, 0.0};
             }
 
-            constexpr double PLAYER_RADIUS = 0.3;
-
-            class Provider : public collision_detector::ItemGathererProvider {
-            public:
-                Provider(const std::vector<model::Player*>& players,
-                         const std::vector<model::LostObject>& items)
-                    : players_(players), items_(items) {}
-
-                size_t ItemsCount() const override {
-                    return items_.size();
-                }
-
-                collision_detector::Item GetItem(size_t idx) const override {
-                    const auto& obj = items_[idx];
-                    return {{obj.pos.x, obj.pos.y}, 0.0};
-                }
-
-                size_t GatherersCount() const override {
-                    return players_.size();
-                }
-
-                collision_detector::Gatherer GetGatherer(size_t idx) const override {
-                    const auto* p = players_[idx];
-                    return {
-                        {p->GetPrevPosition().x, p->GetPrevPosition().y},
-                        {p->GetPosition().x, p->GetPosition().y},
-                        PLAYER_RADIUS
-                   };
-                }
-
-            private:
-                const std::vector<model::Player*>& players_;
-                const std::vector<model::LostObject>& items_;
-            };
-
-            Provider provider(players, items);
-            auto events = collision_detector::FindGatherEvents(provider);
-
-            for (const auto& e : events) {
-                auto* player = players[e.gatherer_id];
-                const auto& item = items[e.item_id];
-
-                if (player->GetBagSize() >= map.GetBagCapacity()) {
-                    continue;
-                }
-
-                player->AddToBag({item.id, item.type});
-                game_.RemoveLostObject(item.id);
+            size_t GatherersCount() const override {
+                return players_.size();
             }
 
-            constexpr double BASE_RADIUS = 0.55;
+            collision_detector::Gatherer GetGatherer(size_t idx) const override {
+                const auto* p = players_[idx];
+                return {
+                    {p->GetPrevPosition().x, p->GetPrevPosition().y},
+                    {p->GetPosition().x, p->GetPosition().y},
+                    0.3
+                };
+            }
 
-            for (auto* player : players) {
-                for (const auto& office : map.GetOffices()) {
-                    double dx = player->GetPosition().x - office.GetPosition().x;
-                    double dy = player->GetPosition().y - office.GetPosition().y;
-                    double dist2 = dx * dx + dy * dy;
+        private:
+            const std::vector<model::Player*>& players_;
+            const std::vector<model::LostObject>& items_;
+        };
 
-                    if (dist2 <= BASE_RADIUS * BASE_RADIUS) {
-                        auto loot_types = extra_data_.Get(map.GetId());
+        Provider provider(players, items);
+        auto events = collision_detector::FindGatherEvents(provider);
 
-                        int total_score = 0;
+        for (const auto& e : events) {
+            auto* player = players[e.gatherer_id];
+            const auto& item = items[e.item_id];
 
-                        for (const auto& item : player->GetBag()) {
-                            total_score += loot_types[item.type]
-                                .as_object()
-                                .at("value")
-                                .as_int64();
-                        }
+            if (player->GetBagSize() >= map.GetBagCapacity()) {
+                continue;
+            }
 
-                        player->AddScore(total_score);
-                        player->ClearBag();
+            player->AddToBag({item.id, item.type});
+            game_.RemoveLostObject(item.id);
+        }
+
+        constexpr double BASE_RADIUS = 0.55;
+
+        for (auto* player : players) {
+            for (const auto& office : map.GetOffices()) {
+                double dx = player->GetPosition().x - office.GetPosition().x;
+                double dy = player->GetPosition().y - office.GetPosition().y;
+                double dist2 = dx * dx + dy * dy;
+
+                if (dist2 <= BASE_RADIUS * BASE_RADIUS) {
+                    auto loot_types = extra_data_.Get(map.GetId());
+
+                    int total_score = 0;
+
+                    for (const auto& item : player->GetBag()) {
+                        total_score += loot_types[item.type]
+                            .as_object()
+                            .at("value")
+                            .as_int64();
                     }
+
+                    player->AddScore(total_score);
+                    player->ClearBag();
                 }
             }
-
-            game_.GenerateLoot(
-                delta,
-                map,
-                players.size()
-            );
         }
 
-        std::vector<model::PlayerId> retired_players;
+        game_.GenerateLoot(delta, map, players.size());
+    }
 
-        for (auto* player : players_.GetAllPlayers()) {
-            player->Tick(delta);
+    std::vector<model::PlayerId> retired_players;
 
-            if (player->GetIdleTime() >= game_.GetDogRetirementTime()) {
+    for (auto* player : players_.GetAllPlayers()) {
+        player->Tick(delta);
+
+        if (player->GetIdleTime() >= game_.GetDogRetirementTime()) {
+            try {
                 records_repo_.Save(
                     player->GetName(),
                     player->GetScore(),
@@ -429,21 +426,30 @@ public:
                 );
 
                 retired_players.push_back(player->GetId());
+
+            } catch (const std::exception& e) {
+                BOOST_LOG_TRIVIAL(error)
+                    << boost::log::add_value(additional_data,
+                        boost::json::object{
+                            {"exception", e.what()}
+                        })
+                    << "failed to save retired player";
             }
         }
-
-        for (auto id : retired_players) {
-            players_.RemovePlayer(id);
-        }
-
-        http::response<http::string_body> res{http::status::ok, req.version()};
-        res.set(http::field::content_type, "application/json");
-        res.set(http::field::cache_control, "no-cache");
-        res.body() = "{}";
-        res.prepare_payload();
-
-        send(std::move(res));
     }
+
+    for (auto id : retired_players) {
+        players_.RemovePlayer(id);
+    }
+
+    http::response<http::string_body> res{http::status::ok, req.version()};
+    res.set(http::field::content_type, "application/json");
+    res.set(http::field::cache_control, "no-cache");
+    res.body() = "{}";
+    res.prepare_payload();
+
+    send(std::move(res));
+}
 
     template <typename Send>
     void HandleMapInfo(const http::request<http::string_body>& req,
