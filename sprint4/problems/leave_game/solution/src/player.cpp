@@ -59,7 +59,6 @@ void PlayerManager::RemovePlayer(PlayerId id) {
     for (auto& player : players_) {
         if (player.GetId() == id) {
             token_to_player_.erase(player.GetToken());
-            player.SetRetired(true);
             return;
         }
     }
