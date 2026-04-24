@@ -47,6 +47,10 @@ public:
         , api_handler_(game_, players_, extra_data_, randomize_spawn, records_repo_)
         , tick_period_(tick_period) {}
 
+        void Tick(std::chrono::milliseconds delta) {
+            api_handler_.ProcessTick(delta);
+        }
+
     template <typename Body, typename Allocator, typename Send>
     void operator()(http::request<Body, http::basic_fields<Allocator>>&& req, Send&& send) {
 
@@ -77,10 +81,11 @@ public:
         }
 
         if (target == Endpoints::GAME_TICK) {
-            if (tick_period_) {
-                SendError(send, req, http::status::bad_request);
+            if (tick_period_.has_value()) {
+                SendBadRequestInvalidEndpoint(req, send);
                 return;
             }
+
             api_handler_.HandleTick(req, send);
             return;
         }
@@ -242,6 +247,28 @@ private:
         res.prepare_payload();
         send(std::move(res));
     }
+
+    template <typename Body, typename Allocator, typename Send>
+void SendBadRequestInvalidEndpoint(
+    const boost::beast::http::request<Body, boost::beast::http::basic_fields<Allocator>>& req,
+    Send&& send
+) {
+    namespace http = boost::beast::http;
+    namespace json = boost::json;
+
+    json::object body{
+        {"code", "badRequest"},
+        {"message", "Invalid endpoint"}
+    };
+
+    http::response<http::string_body> res{http::status::bad_request, req.version()};
+    res.set(http::field::content_type, "application/json");
+    res.set(http::field::cache_control, "no-cache");
+    res.body() = json::serialize(body);
+    res.prepare_payload();
+
+    send(std::move(res));
+}
 
     template <typename Send>
     void HandleRecords(const auto& req, Send&& send) {

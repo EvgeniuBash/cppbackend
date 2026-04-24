@@ -2,23 +2,30 @@
 
 #include <boost/beast/http.hpp>
 #include <boost/json.hpp>
-#include "http_server.h"
-#include <string>
-#include <random>
-#include <string_view>
-#include <iostream>
 
+#include <algorithm>
+#include <chrono>
+#include <cctype>
+#include <cmath>
+#include <iostream>
+#include <random>
+#include <string>
+#include <string_view>
+#include <unordered_set>
+#include <vector>
+
+#include "collision_detector.h"
+#include "http_server.h"
+#include "logger.h"
+#include "map_extra_data.h"
 #include "model.h"
 #include "player.h"
-#include "map_extra_data.h"
-#include "collision_detector.h"
 #include "records.h"
-#include "logger.h"
 
 namespace http_handler {
 
 namespace http = boost::beast::http;
-namespace json = boost::json; 
+namespace json = boost::json;
 
 class ApiHandler {
 public:
@@ -31,7 +38,8 @@ public:
         , players_(players)
         , extra_data_(extra_data)
         , randomize_spawn_(randomize_spawn)
-        , records_repo_(records_repo) {}
+        , records_repo_(records_repo) {
+    }
 
     template <typename Send>
     void HandleJoin(const http::request<http::string_body>& req, Send&& send) {
@@ -40,26 +48,41 @@ public:
             return;
         }
 
+        if (!IsJsonContentType(req)) {
+            SendInvalidArgument(req, send, "Invalid content type");
+            return;
+        }
+
         json::value body;
         try {
             body = json::parse(req.body());
         } catch (...) {
-            SendBadRequest(req, send, "Join game request parse error");
+            SendInvalidArgument(req, send, "Join game request parse error");
             return;
         }
 
-        auto obj = body.as_object();
+        if (!body.is_object()) {
+            SendInvalidArgument(req, send, "Join game request parse error");
+            return;
+        }
+
+        const auto& obj = body.as_object();
 
         if (!obj.contains("userName") || !obj.contains("mapId")) {
-            SendBadRequest(req, send, "Missing userName or mapId");
+            SendInvalidArgument(req, send, "Join game request parse error");
             return;
         }
 
-        std::string name = obj["userName"].as_string().c_str();
-        std::string map_id = obj["mapId"].as_string().c_str();
+        if (!obj.at("userName").is_string() || !obj.at("mapId").is_string()) {
+            SendInvalidArgument(req, send, "Join game request parse error");
+            return;
+        }
+
+        std::string name = std::string(obj.at("userName").as_string());
+        std::string map_id = std::string(obj.at("mapId").as_string());
 
         if (name.empty()) {
-            SendBadRequest(req, send, "Invalid name");
+            SendInvalidArgument(req, send, "Invalid name");
             return;
         }
 
@@ -70,25 +93,11 @@ public:
         }
 
         if (map->GetRoads().empty()) {
-            SendBadRequest(req, send, "Map has no roads");
+            SendInvalidArgument(req, send, "Map has no roads");
             return;
         }
 
-        model::Position start_pos;
-
-        if (randomize_spawn_) {
-            static std::random_device rd;
-            static std::mt19937 gen(rd());
-            std::uniform_int_distribution<size_t> dist(0, map->GetRoads().size() - 1);
-
-            const auto& road = map->GetRoads()[dist(gen)];
-            start_pos = {static_cast<double>(road.GetStart().x),
-                         static_cast<double>(road.GetStart().y)};
-        } else {
-            const auto& road = map->GetRoads().front();
-            start_pos = {static_cast<double>(road.GetStart().x),
-                         static_cast<double>(road.GetStart().y)};
-        }
+        model::Position start_pos = GetStartPosition(*map);
 
         auto& player = players_.AddPlayer(name, map->GetId(), start_pos);
 
@@ -97,19 +106,19 @@ public:
             {"playerId", player.GetId()}
         };
 
-        http::response<http::string_body> res{http::status::ok, req.version()};
-        res.set(http::field::content_type, "application/json");
-        res.set(http::field::cache_control, "no-cache");
-        res.body() = json::serialize(resp);
-        res.prepare_payload();
-        send(std::move(res));
+        SendOkJson(req, send, resp);
     }
 
     template <typename Send>
     void HandlePlayers(const http::request<http::string_body>& req, Send&& send) {
+        if (req.method() != http::verb::get &&
+            req.method() != http::verb::head) {
+            SendMethodNotAllowed(req, send, "GET, HEAD");
+            return;
+        }
+
         ExecuteAuthorized(req, send,
             [this, req, send](model::Player* player) mutable {
-
                 json::object players_json;
 
                 for (auto* p : players_.GetPlayersByMap(player->GetMapId())) {
@@ -120,23 +129,13 @@ public:
                 json::object result;
                 result["players"] = std::move(players_json);
 
-                http::response<http::string_body> res{http::status::ok, req.version()};
-                res.set(http::field::content_type, "application/json");
-                res.set(http::field::cache_control, "no-cache");
-
-                if (req.method() != http::verb::head) {
-                    res.body() = json::serialize(result);
-                }
-
-                res.prepare_payload();
-                send(std::move(res));
+                SendOkJson(req, send, result);
             });
     }
 
     template <typename Body, typename Allocator, typename Send>
-    void HandleState(http::request<Body, http::basic_fields<Allocator>>& req,
+    void HandleState(const http::request<Body, http::basic_fields<Allocator>>& req,
                      Send&& send) {
-
         if (req.method() != http::verb::get &&
             req.method() != http::verb::head) {
             SendMethodNotAllowed(req, send, "GET, HEAD");
@@ -145,28 +144,32 @@ public:
 
         ExecuteAuthorized(req, send,
             [this, req, send](model::Player* player) mutable {
-
                 json::object players_json;
-                for (auto* p : players_.GetPlayersByMap(player->GetMapId())) {
 
+                for (auto* p : players_.GetPlayersByMap(player->GetMapId())) {
                     json::array bag;
 
                     for (const auto& item : p->GetBag()) {
-                        bag.push_back({
+                        bag.push_back(json::object{
                             {"id", item.id},
                             {"type", item.type}
                         });
                     }
 
-                   json::object player_obj;
+                    json::object player_obj;
+                    player_obj["pos"] = json::array{
+                        p->GetPosition().x,
+                        p->GetPosition().y
+                    };
+                    player_obj["speed"] = json::array{
+                        p->GetSpeed().vx,
+                        p->GetSpeed().vy
+                    };
+                    player_obj["dir"] = DirToString(p->GetDirection());
+                    player_obj["bag"] = std::move(bag);
+                    player_obj["score"] = p->GetScore();
 
-                   player_obj["pos"] = {p->GetPosition().x, p->GetPosition().y};
-                   player_obj["speed"] = {p->GetSpeed().vx, p->GetSpeed().vy};
-                   player_obj["dir"] = DirToString(p->GetDirection());
-                   player_obj["bag"] = bag;
-                   player_obj["score"] = p->GetScore();
-
-                   players_json[std::to_string(p->GetId())] = std::move(player_obj);
+                    players_json[std::to_string(p->GetId())] = std::move(player_obj);
                 }
 
                 json::object loot_json;
@@ -184,281 +187,180 @@ public:
                 result["players"] = std::move(players_json);
                 result["lostObjects"] = std::move(loot_json);
 
-                http::response<http::string_body> res{http::status::ok, req.version()};
-                res.set(http::field::content_type, "application/json");
-                res.set(http::field::cache_control, "no-cache");
-
-                if (req.method() != http::verb::head) {
-                    res.body() = json::serialize(result);
-                }
-
-                res.prepare_payload();
-                send(std::move(res));
+                SendOkJson(req, send, result);
             });
     }
 
     template <typename Body, typename Allocator, typename Send>
-    void HandleAction(http::request<Body, http::basic_fields<Allocator>>& req,
+    void HandleAction(const http::request<Body, http::basic_fields<Allocator>>& req,
                       Send&& send) {
-
         if (req.method() != http::verb::post) {
             SendMethodNotAllowed(req, send, "POST");
             return;
         }
 
-        if (req[http::field::content_type] != "application/json") {
-            SendBadRequest(req, send, "Invalid content type");
+        if (!IsJsonContentType(req)) {
+            SendInvalidArgument(req, send, "Invalid content type");
             return;
         }
 
         ExecuteAuthorized(req, send,
             [this, req, send](model::Player* player) mutable {
-
                 json::value body;
+
                 try {
                     body = json::parse(req.body());
                 } catch (...) {
-                    SendBadRequest(req, send, "Failed to parse action");
+                    SendInvalidArgument(req, send, "Failed to parse action");
                     return;
                 }
 
-                if (!body.is_object() || !body.as_object().contains("move")) {
-                    SendBadRequest(req, send, "Failed to parse action");
+                if (!body.is_object()) {
+                    SendInvalidArgument(req, send, "Failed to parse action");
                     return;
                 }
 
-                std::string move = body.at("move").as_string().c_str();
+                const auto& obj = body.as_object();
+
+                if (!obj.contains("move") || !obj.at("move").is_string()) {
+                    SendInvalidArgument(req, send, "Failed to parse action");
+                    return;
+                }
+
+                const std::string move = std::string(obj.at("move").as_string());
 
                 const model::Map* map = game_.FindMap(player->GetMapId());
                 if (!map) {
-                    SendBadRequest(req, send, "Map not found");
+                    SendInvalidArgument(req, send, "Map not found");
                     return;
                 }
 
-                double s = map->GetDogSpeed();
+                const double s = map->GetDogSpeed();
 
-                bool was_idle = player->IsIdle();
+                const bool was_idle = player->IsIdle();
 
-                model::Speed new_speed;
+                model::Speed new_speed{0.0, 0.0};
 
                 if (move == "L") {
-                    new_speed = {-s, 0};
+                    new_speed = {-s, 0.0};
                     player->SetDirection(model::Direction::WEST);
                 } else if (move == "R") {
-                    new_speed = {s, 0};
+                    new_speed = {s, 0.0};
                     player->SetDirection(model::Direction::EAST);
                 } else if (move == "U") {
-                    new_speed = {0, -s};
+                    new_speed = {0.0, -s};
                     player->SetDirection(model::Direction::NORTH);
                 } else if (move == "D") {
-                    new_speed = {0, s};
+                    new_speed = {0.0, s};
                     player->SetDirection(model::Direction::SOUTH);
                 } else if (move == "") {
-                    new_speed = {0, 0};
+                    new_speed = {0.0, 0.0};
                 } else {
-                    SendBadRequest(req, send, "Invalid move");
+                    SendInvalidArgument(req, send, "Invalid move");
                     return;
                 }
 
                 player->SetSpeed(new_speed);
 
-                if (!was_idle && player->IsIdle()) {
+                /*
+                 * ВАЖНО:
+                 * Если пришла команда движения — игрок больше не idle.
+                 * Если пришла команда остановки после движения — idle начинается с нуля.
+                 * Если игрок и так стоял, а ему снова прислали "" — idle не сбрасываем.
+                 */
+                if (!move.empty()) {
+                    player->ResetIdleTime();
+                } else if (!was_idle && player->IsIdle()) {
                     player->ResetIdleTime();
                 }
 
-                http::response<http::string_body> res{http::status::ok, req.version()};
-                res.set(http::field::content_type, "application/json");
-                res.set(http::field::cache_control, "no-cache");
-                res.body() = "{}";
-                res.prepare_payload();
-
-                send(std::move(res));
+                SendOkJson(req, send, json::object{});
             });
     }
 
-template <typename Body, typename Allocator, typename Send>
-void HandleTick(http::request<Body, http::basic_fields<Allocator>>& req,
-                Send&& send) {
-    using namespace std::chrono;
-
-    if (req.method() != http::verb::post) {
-        SendMethodNotAllowed(req, send, "POST");
-        return;
-    }
-
-    if (req[http::field::content_type] != "application/json") {
-        SendInvalidArgument(req, send, "Invalid content type");
-        return;
-    }
-
-    json::value body;
-    try {
-        body = json::parse(req.body());
-    } catch (...) {
-        SendInvalidArgument(req, send, "Failed to parse tick request JSON");
-        return;
-    }
-
-    if (!body.is_object()) {
-        SendInvalidArgument(req, send, "Invalid tick request");
-        return;
-    }
-
-    auto& obj = body.as_object();
-
-    if (!obj.contains("timeDelta") || !obj.at("timeDelta").is_int64()) {
-        SendInvalidArgument(req, send, "Invalid timeDelta");
-        return;
-    }
-
-    int64_t delta_ms = obj.at("timeDelta").as_int64();
-    if (delta_ms < 0) {
-        SendInvalidArgument(req, send, "Invalid timeDelta");
-        return;
-    }
-
-    const double dt = delta_ms / 1000.0;
-    const milliseconds delta{delta_ms};
-
-    for (const auto& map : game_.GetMaps()) {
-        auto players = players_.GetPlayersByMap(map.GetId());
-
-        for (auto* player : players) {
-            player->SetPrevPosition(player->GetPosition());
-            MovePlayerAlongRoad(player, dt);
+    template <typename Body, typename Allocator, typename Send>
+    void HandleTick(const http::request<Body, http::basic_fields<Allocator>>& req,
+                    Send&& send) {
+        if (req.method() != http::verb::post) {
+            SendMethodNotAllowed(req, send, "POST");
+            return;
         }
 
-        std::vector<model::LostObject> items;
-        for (const auto& [id, obj] : game_.GetLostObjects()) {
-            if (obj.map_id == map.GetId()) {
-                items.push_back(obj);
-            }
+        if (!IsJsonContentType(req)) {
+            SendInvalidArgument(req, send, "Invalid content type");
+            return;
         }
 
-        class Provider : public collision_detector::ItemGathererProvider {
-        public:
-            Provider(const std::vector<model::Player*>& players,
-                     const std::vector<model::LostObject>& items)
-                : players_(players)
-                , items_(items) {}
+        json::value body;
 
-            size_t ItemsCount() const override {
-                return items_.size();
-            }
-
-            collision_detector::Item GetItem(size_t idx) const override {
-                const auto& obj = items_[idx];
-                return {{obj.pos.x, obj.pos.y}, 0.0};
-            }
-
-            size_t GatherersCount() const override {
-                return players_.size();
-            }
-
-            collision_detector::Gatherer GetGatherer(size_t idx) const override {
-                const auto* p = players_[idx];
-                return {
-                    {p->GetPrevPosition().x, p->GetPrevPosition().y},
-                    {p->GetPosition().x, p->GetPosition().y},
-                    0.3
-                };
-            }
-
-        private:
-            const std::vector<model::Player*>& players_;
-            const std::vector<model::LostObject>& items_;
-        };
-
-        Provider provider(players, items);
-        auto events = collision_detector::FindGatherEvents(provider);
-
-        for (const auto& e : events) {
-            auto* player = players[e.gatherer_id];
-            const auto& item = items[e.item_id];
-
-            if (player->GetBagSize() >= map.GetBagCapacity()) {
-                continue;
-            }
-
-            player->AddToBag({item.id, item.type});
-            game_.RemoveLostObject(item.id);
+        try {
+            body = json::parse(req.body());
+        } catch (...) {
+            SendInvalidArgument(req, send, "Failed to parse tick request JSON");
+            return;
         }
 
-        constexpr double BASE_RADIUS = 0.55;
-
-        for (auto* player : players) {
-            for (const auto& office : map.GetOffices()) {
-                double dx = player->GetPosition().x - office.GetPosition().x;
-                double dy = player->GetPosition().y - office.GetPosition().y;
-                double dist2 = dx * dx + dy * dy;
-
-                if (dist2 <= BASE_RADIUS * BASE_RADIUS) {
-                    auto loot_types = extra_data_.Get(map.GetId());
-
-                    int total_score = 0;
-
-                    for (const auto& item : player->GetBag()) {
-                        total_score += loot_types[item.type]
-                            .as_object()
-                            .at("value")
-                            .as_int64();
-                    }
-
-                    player->AddScore(total_score);
-                    player->ClearBag();
-                }
-            }
+        if (!body.is_object()) {
+            SendInvalidArgument(req, send, "Invalid tick request");
+            return;
         }
 
-        game_.GenerateLoot(delta, map, players.size());
+        const auto& obj = body.as_object();
+
+        if (!obj.contains("timeDelta") || !obj.at("timeDelta").is_int64()) {
+            SendInvalidArgument(req, send, "Invalid timeDelta");
+            return;
+        }
+
+        const int64_t delta_ms = obj.at("timeDelta").as_int64();
+
+        if (delta_ms < 0) {
+            SendInvalidArgument(req, send, "Invalid timeDelta");
+            return;
+        }
+
+        ProcessTick(std::chrono::milliseconds{delta_ms});
+
+        SendOkJson(req, send, json::object{});
     }
 
-std::vector<model::PlayerId> retired_players;
-std::vector<records::Record> records_to_save;
+    /*
+     * Эту функцию теперь вызывает и ручной /api/v1/game/tick,
+     * и автоматический Ticker из main.cpp.
+     */
+    void ProcessTick(std::chrono::milliseconds delta) {
+        if (delta.count() < 0) {
+            return;
+        }
 
-for (auto* player : players_.GetAllPlayers()) {
-    player->Tick(delta);
+        const double dt = std::chrono::duration<double>(delta).count();
 
-    if (player->GetIdleTime() >= game_.GetDogRetirementTime()) {
-        records_to_save.push_back({
-            player->GetName(),
-            player->GetScore(),
-            duration<double>(player->GetPlayTime()).count()
-        });
+        for (const auto& map : game_.GetMaps()) {
+            auto players_on_map = players_.GetPlayersByMap(map.GetId());
 
-        retired_players.push_back(player->GetId());
+            for (auto* player : players_on_map) {
+                player->SetPrevPosition(player->GetPosition());
+                MovePlayerAlongRoad(player, dt);
+            }
+
+            CollectLoot(map, players_on_map);
+            DeliverLootToOffices(map, players_on_map);
+
+            game_.GenerateLoot(delta, map, players_on_map.size());
+        }
+
+        RetireIdlePlayers(delta);
     }
-}
-
-if (!records_to_save.empty()) {
-    try {
-        records_repo_.SaveMany(records_to_save);
-    } catch (const std::exception& e) {
-        std::cerr << "SaveMany failed: " << e.what() << std::endl;
-    }
-}
-
-for (auto id : retired_players) {
-    try {
-        players_.RemovePlayer(id);
-    } catch (const std::exception& e) {
-        std::cerr << "RemovePlayer failed: " << e.what() << std::endl;
-    }
-}
-
-    http::response<http::string_body> res{http::status::ok, req.version()};
-    res.set(http::field::content_type, "application/json");
-    res.set(http::field::cache_control, "no-cache");
-    res.body() = "{}";
-    res.prepare_payload();
-
-    send(std::move(res));
-}
 
     template <typename Send>
     void HandleMapInfo(const http::request<http::string_body>& req,
                        Send&& send,
                        const std::string& map_id) {
+        if (req.method() != http::verb::get &&
+            req.method() != http::verb::head) {
+            SendMethodNotAllowed(req, send, "GET, HEAD");
+            return;
+        }
 
         const model::Map* map = game_.FindMap(model::Map::Id{map_id});
         if (!map) {
@@ -482,25 +384,94 @@ for (auto id : retired_players) {
                 obj["y1"] = r.GetEnd().y;
             }
 
-            roads.push_back(obj);
+            roads.push_back(std::move(obj));
+        }
+
+        json::array buildings;
+        for (const auto& b : map->GetBuildings()) {
+            const auto& bounds = b.GetBounds();
+
+            buildings.push_back(json::object{
+                {"x", bounds.position.x},
+                {"y", bounds.position.y},
+                {"w", bounds.size.width},
+                {"h", bounds.size.height}
+            });
+        }
+
+        json::array offices;
+        for (const auto& office : map->GetOffices()) {
+            const auto& pos = office.GetPosition();
+            const auto& offset = office.GetOffset();
+
+            offices.push_back(json::object{
+                {"id", *office.GetId()},
+                {"x", pos.x},
+                {"y", pos.y},
+                {"offsetX", offset.dx},
+                {"offsetY", offset.dy}
+            });
         }
 
         result["roads"] = std::move(roads);
-        result["buildings"] = json::array{};
-        result["offices"] = json::array{};
+        result["buildings"] = std::move(buildings);
+        result["offices"] = std::move(offices);
 
-        http::response<http::string_body> res{http::status::ok, req.version()};
-        res.set(http::field::content_type, "application/json");
-        res.set(http::field::cache_control, "no-cache");
-        res.body() = json::serialize(result);
-        res.prepare_payload();
-
-        send(std::move(res));
+        SendOkJson(req, send, result);
     }
 
 private:
+    static constexpr double ROAD_HALF_WIDTH = 0.4;
+    static constexpr double DOG_WIDTH = 0.6;
+    static constexpr double LOOT_WIDTH = 0.0;
+    static constexpr double OFFICE_WIDTH = 0.5;
+
+    model::Position GetStartPosition(const model::Map& map) const {
+        if (!randomize_spawn_) {
+            const auto& road = map.GetRoads().front();
+            return {
+                static_cast<double>(road.GetStart().x),
+                static_cast<double>(road.GetStart().y)
+            };
+        }
+
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+
+        std::uniform_int_distribution<size_t> road_dist(0, map.GetRoads().size() - 1);
+        const auto& road = map.GetRoads()[road_dist(gen)];
+
+        if (road.IsHorizontal()) {
+            const int x0 = std::min(road.GetStart().x, road.GetEnd().x);
+            const int x1 = std::max(road.GetStart().x, road.GetEnd().x);
+
+            std::uniform_real_distribution<double> x_dist(
+                static_cast<double>(x0),
+                static_cast<double>(x1)
+            );
+
+            return {
+                x_dist(gen),
+                static_cast<double>(road.GetStart().y)
+            };
+        }
+
+        const int y0 = std::min(road.GetStart().y, road.GetEnd().y);
+        const int y1 = std::max(road.GetStart().y, road.GetEnd().y);
+
+        std::uniform_real_distribution<double> y_dist(
+            static_cast<double>(y0),
+            static_cast<double>(y1)
+        );
+
+        return {
+            static_cast<double>(road.GetStart().x),
+            y_dist(gen)
+        };
+    }
+
     void MovePlayerAlongRoad(model::Player* player, double dt) {
-        if (!player || dt <= 0) {
+        if (!player || dt <= 0.0) {
             return;
         }
 
@@ -511,6 +482,10 @@ private:
 
         const auto pos = player->GetPosition();
         const auto speed = player->GetSpeed();
+
+        if (speed.vx == 0.0 && speed.vy == 0.0) {
+            return;
+        }
 
         const double target_x = pos.x + speed.vx * dt;
         const double target_y = pos.y + speed.vy * dt;
@@ -523,68 +498,91 @@ private:
             if (!found) {
                 return true;
             }
-            if (speed.vx > 0) return cand.x > best_pos.x;
-            if (speed.vx < 0) return cand.x < best_pos.x;
-            if (speed.vy > 0) return cand.y > best_pos.y;
-            if (speed.vy < 0) return cand.y < best_pos.y;
+
+            if (speed.vx > 0.0) {
+                return cand.x > best_pos.x;
+            }
+
+            if (speed.vx < 0.0) {
+                return cand.x < best_pos.x;
+            }
+
+            if (speed.vy > 0.0) {
+                return cand.y > best_pos.y;
+            }
+
+            if (speed.vy < 0.0) {
+                return cand.y < best_pos.y;
+            }
+
             return false;
         };
 
         for (const auto& road : map->GetRoads()) {
-        constexpr double ROAD_HALF_WIDTH = 0.4;
-        double min_x, max_x, min_y, max_y;
+            double min_x = 0.0;
+            double max_x = 0.0;
+            double min_y = 0.0;
+            double max_y = 0.0;
 
-        if (road.IsHorizontal()) {
-            const double y = static_cast<double>(road.GetStart().y);
-            const double left = static_cast<double>(std::min(road.GetStart().x, road.GetEnd().x));
-            const double right = static_cast<double>(std::max(road.GetStart().x, road.GetEnd().x));
+            if (road.IsHorizontal()) {
+                const double y = static_cast<double>(road.GetStart().y);
+                const double left = static_cast<double>(
+                    std::min(road.GetStart().x, road.GetEnd().x)
+                );
+                const double right = static_cast<double>(
+                    std::max(road.GetStart().x, road.GetEnd().x)
+                );
 
-            min_x = left - ROAD_HALF_WIDTH;
-            max_x = right + ROAD_HALF_WIDTH;
-            min_y = y - ROAD_HALF_WIDTH;
-            max_y = y + ROAD_HALF_WIDTH;
-        } else {
-            const double x = static_cast<double>(road.GetStart().x);
-            const double top = static_cast<double>(std::min(road.GetStart().y, road.GetEnd().y));
-            const double bottom = static_cast<double>(std::max(road.GetStart().y, road.GetEnd().y));
+                min_x = left - ROAD_HALF_WIDTH;
+                max_x = right + ROAD_HALF_WIDTH;
+                min_y = y - ROAD_HALF_WIDTH;
+                max_y = y + ROAD_HALF_WIDTH;
+            } else {
+                const double x = static_cast<double>(road.GetStart().x);
+                const double top = static_cast<double>(
+                    std::min(road.GetStart().y, road.GetEnd().y)
+                );
+                const double bottom = static_cast<double>(
+                    std::max(road.GetStart().y, road.GetEnd().y)
+                );
 
-            min_x = x - ROAD_HALF_WIDTH;
-            max_x = x + ROAD_HALF_WIDTH;
-            min_y = top - ROAD_HALF_WIDTH;
-            max_y = bottom + ROAD_HALF_WIDTH;
-        }
+                min_x = x - ROAD_HALF_WIDTH;
+                max_x = x + ROAD_HALF_WIDTH;
+                min_y = top - ROAD_HALF_WIDTH;
+                max_y = bottom + ROAD_HALF_WIDTH;
+            }
 
-        if (!(pos.x >= min_x && pos.x <= max_x &&
-              pos.y >= min_y && pos.y <= max_y)) {
-            continue;
-        }
+            if (!(pos.x >= min_x && pos.x <= max_x &&
+                  pos.y >= min_y && pos.y <= max_y)) {
+                continue;
+            }
 
-        double new_x = target_x;
-        double new_y = target_y;
-        model::Speed new_speed = speed;
+            double new_x = target_x;
+            double new_y = target_y;
+            model::Speed new_speed = speed;
 
-        if (new_x < min_x) {
-            new_x = min_x;
-            new_speed.vx = 0.0;
-        } else if (new_x > max_x) {
-            new_x = max_x;
-            new_speed.vx = 0.0;
-        }
+            if (new_x < min_x) {
+                new_x = min_x;
+                new_speed.vx = 0.0;
+            } else if (new_x > max_x) {
+                new_x = max_x;
+                new_speed.vx = 0.0;
+            }
 
-        if (new_y < min_y) {
-            new_y = min_y;
-            new_speed.vy = 0.0;
-        } else if (new_y > max_y) {
-            new_y = max_y;
-            new_speed.vy = 0.0;
-        }
+            if (new_y < min_y) {
+                new_y = min_y;
+                new_speed.vy = 0.0;
+            } else if (new_y > max_y) {
+                new_y = max_y;
+                new_speed.vy = 0.0;
+            }
 
-        model::Position cand{new_x, new_y};
+            model::Position candidate{new_x, new_y};
 
-        if (is_better(cand)) {
-            best_pos = cand;
-            best_speed = new_speed;
-            found = true;
+            if (is_better(candidate)) {
+                best_pos = candidate;
+                best_speed = new_speed;
+                found = true;
             }
         }
 
@@ -595,12 +593,223 @@ private:
             player->SetSpeed({0.0, 0.0});
         }
     }
-    
-    template <typename Body, typename Allocator, typename Send, typename Fn>
-    void ExecuteAuthorized(const http::request<Body, http::basic_fields<Allocator>>& req,
+
+    void CollectLoot(const model::Map& map, const std::vector<model::Player*>& players) {
+        std::vector<model::LostObject> items;
+
+        for (const auto& [id, obj] : game_.GetLostObjects()) {
+            if (obj.map_id == map.GetId()) {
+                items.push_back(obj);
+            }
+        }
+
+        if (items.empty() || players.empty()) {
+            return;
+        }
+
+        class Provider final : public collision_detector::ItemGathererProvider {
+        public:
+            Provider(const std::vector<model::Player*>& players,
+                     const std::vector<model::LostObject>& items)
+                : players_(players)
+                , items_(items) {
+            }
+
+            size_t ItemsCount() const override {
+                return items_.size();
+            }
+
+            collision_detector::Item GetItem(size_t idx) const override {
+                const auto& obj = items_[idx];
+
+                return {
+                    {obj.pos.x, obj.pos.y},
+                    LOOT_WIDTH
+                };
+            }
+
+            size_t GatherersCount() const override {
+                return players_.size();
+            }
+
+            collision_detector::Gatherer GetGatherer(size_t idx) const override {
+                const auto* player = players_[idx];
+
+                return {
+                    {player->GetPrevPosition().x, player->GetPrevPosition().y},
+                    {player->GetPosition().x, player->GetPosition().y},
+                    DOG_WIDTH
+                };
+            }
+
+        private:
+            const std::vector<model::Player*>& players_;
+            const std::vector<model::LostObject>& items_;
+        };
+
+        Provider provider(players, items);
+        auto events = collision_detector::FindGatherEvents(provider);
+
+        std::unordered_set<int> collected_ids;
+
+        for (const auto& event : events) {
+            auto* player = players[event.gatherer_id];
+            const auto& item = items[event.item_id];
+
+            if (collected_ids.contains(item.id)) {
+                continue;
+            }
+
+            if (player->GetBagSize() >= map.GetBagCapacity()) {
+                continue;
+            }
+
+            player->AddToBag({item.id, item.type});
+            game_.RemoveLostObject(item.id);
+
+            collected_ids.insert(item.id);
+        }
+    }
+
+    void DeliverLootToOffices(const model::Map& map,
+                              const std::vector<model::Player*>& players) {
+        if (players.empty() || map.GetOffices().empty()) {
+            return;
+        }
+
+        for (auto* player : players) {
+            if (player->GetBag().empty()) {
+                continue;
+            }
+
+            bool near_office = false;
+
+            for (const auto& office : map.GetOffices()) {
+                const auto& pos = office.GetPosition();
+
+                const double dx = player->GetPosition().x - pos.x;
+                const double dy = player->GetPosition().y - pos.y;
+
+                const double radius = DOG_WIDTH + OFFICE_WIDTH;
+
+                if (dx * dx + dy * dy <= radius * radius) {
+                    near_office = true;
+                    break;
+                }
+            }
+
+            if (!near_office) {
+                continue;
+            }
+
+            DeliverBag(*player, map);
+        }
+    }
+
+    void DeliverBag(model::Player& player, const model::Map& map) {
+        const auto loot_types = extra_data_.Get(map.GetId());
+
+        int total_score = 0;
+
+        for (const auto& item : player.GetBag()) {
+            if (item.type < 0 ||
+                static_cast<size_t>(item.type) >= loot_types.size()) {
+                continue;
+            }
+
+            const auto& loot_value = loot_types[item.type];
+
+            if (!loot_value.is_object()) {
+                continue;
+            }
+
+            const auto& loot_obj = loot_value.as_object();
+
+            if (!loot_obj.contains("value") || !loot_obj.at("value").is_int64()) {
+                continue;
+            }
+
+            total_score += static_cast<int>(loot_obj.at("value").as_int64());
+        }
+
+        if (total_score > 0) {
+            player.AddScore(total_score);
+        }
+
+        player.ClearBag();
+    }
+
+    void RetireIdlePlayers(std::chrono::milliseconds delta) {
+        std::vector<model::PlayerId> retired_players;
+        std::vector<records::Record> records_to_save;
+
+        for (auto* player : players_.GetAllPlayers()) {
+            player->Tick(delta);
+
+            if (player->GetIdleTime() >= game_.GetDogRetirementTime()) {
+                records_to_save.push_back({
+                    player->GetName(),
+                    player->GetScore(),
+                    std::chrono::duration<double>(player->GetPlayTime()).count()
+                });
+
+                retired_players.push_back(player->GetId());
+            }
+        }
+
+        if (!records_to_save.empty()) {
+            try {
+                records_repo_.SaveMany(records_to_save);
+            } catch (const std::exception& e) {
+                std::cerr << "SaveMany failed: " << e.what() << std::endl;
+            }
+        }
+
+        for (auto id : retired_players) {
+            try {
+                players_.RemovePlayer(id);
+            } catch (const std::exception& e) {
+                std::cerr << "RemovePlayer failed: " << e.what() << std::endl;
+            }
+        }
+    }
+
+    template <typename Body, typename Fields>
+    static bool IsJsonContentType(const http::request<Body, Fields>& req) {
+        auto it = req.find(http::field::content_type);
+
+        if (it == req.end()) {
+            return false;
+        }
+
+        const std::string content_type = std::string(it->value());
+
+        return content_type == "application/json" ||
+               content_type.rfind("application/json;", 0) == 0;
+    }
+
+    template <typename Body, typename Fields, typename Send>
+    void SendOkJson(const http::request<Body, Fields>& req,
+                    Send&& send,
+                    const json::value& body) {
+        http::response<http::string_body> res{http::status::ok, req.version()};
+
+        res.set(http::field::content_type, "application/json");
+        res.set(http::field::cache_control, "no-cache");
+
+        if (req.method() != http::verb::head) {
+            res.body() = json::serialize(body);
+        }
+
+        res.prepare_payload();
+
+        send(std::move(res));
+    }
+
+    template <typename Body, typename Fields, typename Send, typename Fn>
+    void ExecuteAuthorized(const http::request<Body, Fields>& req,
                            Send&& send,
                            Fn&& action) {
-
         auto it = req.find(http::field::authorization);
 
         if (it == req.end() || it->value().empty()) {
@@ -608,69 +817,80 @@ private:
             return;
         }
 
-        std::string auth = std::string(it->value());
-
+        const std::string auth = std::string(it->value());
         const std::string prefix = "Bearer ";
-        if (!auth.starts_with(prefix)) {
+
+        if (auth.rfind(prefix, 0) != 0) {
             SendUnauthorized(req, send, "invalidToken", "Bad auth header");
             return;
         }
 
-        std::string token = auth.substr(prefix.size());
+        const std::string token = auth.substr(prefix.size());
 
-        auto isValidToken = [](const std::string& t) {
-            if (t.size() != 32) return false;
-            for (char c : t)
-                if (!std::isxdigit(static_cast<unsigned char>(c)))
-                    return false;
-            return true;
-        };
-
-        if (!isValidToken(token)) {
+        if (!IsValidToken(token)) {
             SendUnauthorized(req, send, "invalidToken", "Invalid token");
             return;
         }
 
-        auto player = players_.FindByToken(token);
+        auto* player = players_.FindByToken(token);
+
         if (!player) {
-            SendUnauthorized(req, send, "unknownToken", "Not found");
+            SendUnauthorized(req, send, "unknownToken", "Player token has not been found");
             return;
         }
 
         action(player);
     }
 
-    template <typename Send>
-    void SendBadRequest(const http::request<http::string_body>& req,
-                        Send&& send,
-                        const std::string& msg) {
-        SendError(req, send, http::status::bad_request, "invalidArgument", msg);
+    static bool IsValidToken(const std::string& token) {
+        if (token.size() != 32) {
+            return false;
+        }
+
+        for (char c : token) {
+            if (!std::isxdigit(static_cast<unsigned char>(c))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    template <typename Send>
-    void SendNotFound(const http::request<http::string_body>& req,
+    template <typename Body, typename Fields, typename Send>
+    void SendInvalidArgument(const http::request<Body, Fields>& req,
+                             Send&& send,
+                             const std::string& message) {
+        SendError(req, send, http::status::bad_request, "invalidArgument", message);
+    }
+
+    template <typename Body, typename Fields, typename Send>
+    void SendNotFound(const http::request<Body, Fields>& req,
                       Send&& send,
                       const std::string& code,
-                      const std::string& msg) {
-        SendError(req, send, http::status::not_found, code, msg);
+                      const std::string& message) {
+        SendError(req, send, http::status::not_found, code, message);
     }
 
-    template <typename Send>
-    void SendUnauthorized(const http::request<http::string_body>& req,
+    template <typename Body, typename Fields, typename Send>
+    void SendUnauthorized(const http::request<Body, Fields>& req,
                           Send&& send,
                           const std::string& code,
-                          const std::string& msg) {
-        SendError(req, send, http::status::unauthorized, code, msg);
+                          const std::string& message) {
+        SendError(req, send, http::status::unauthorized, code, message);
     }
 
-    template <typename Send>
-    void SendMethodNotAllowed(const http::request<http::string_body>& req,
+    template <typename Body, typename Fields, typename Send>
+    void SendMethodNotAllowed(const http::request<Body, Fields>& req,
                               Send&& send,
                               const std::string& allow) {
+        http::response<http::string_body> res{
+            http::status::method_not_allowed,
+            req.version()
+        };
 
-        http::response<http::string_body> res{http::status::method_not_allowed, req.version()};
         res.set(http::field::allow, allow);
         res.set(http::field::content_type, "application/json");
+        res.set(http::field::cache_control, "no-cache");
 
         json::object body{
             {"code", "invalidMethod"},
@@ -679,18 +899,20 @@ private:
 
         res.body() = json::serialize(body);
         res.prepare_payload();
+
         send(std::move(res));
     }
 
-    template <typename Send>
-    void SendError(const http::request<http::string_body>& req,
+    template <typename Body, typename Fields, typename Send>
+    void SendError(const http::request<Body, Fields>& req,
                    Send&& send,
                    http::status status,
                    const std::string& code,
                    const std::string& message) {
-
         http::response<http::string_body> res{status, req.version()};
+
         res.set(http::field::content_type, "application/json");
+        res.set(http::field::cache_control, "no-cache");
 
         json::object body{
             {"code", code},
@@ -699,34 +921,23 @@ private:
 
         res.body() = json::serialize(body);
         res.prepare_payload();
+
         send(std::move(res));
     }
 
     static std::string DirToString(model::Direction dir) {
         switch (dir) {
-            case model::Direction::NORTH: return "U";
-            case model::Direction::SOUTH: return "D";
-            case model::Direction::WEST:  return "L";
-            case model::Direction::EAST:  return "R";
+            case model::Direction::NORTH:
+                return "U";
+            case model::Direction::SOUTH:
+                return "D";
+            case model::Direction::WEST:
+                return "L";
+            case model::Direction::EAST:
+                return "R";
         }
+
         return "U";
-    }
-
-    template <typename Send>
-    void SendInvalidArgument(const http::request<http::string_body>& req,
-                         Send&& send,
-                         const std::string& message) {
-        json::object obj;
-        obj["code"] = "invalidArgument";
-        obj["message"] = message;
-
-        http::response<http::string_body> res{http::status::bad_request, req.version()};
-        res.set(http::field::content_type, "application/json");
-        res.set(http::field::cache_control, "no-cache");
-        res.body() = json::serialize(obj);
-        res.prepare_payload();
-
-        send(std::move(res));
     }
 
 private:

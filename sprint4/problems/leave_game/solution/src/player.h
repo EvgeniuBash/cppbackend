@@ -48,8 +48,8 @@ public:
     Position GetPrevPosition() const { return prev_position_; }
     size_t GetBagSize() const { return bag_.size(); }
     int GetScore() const { return score_; }
-    Time GetPlayTime() const { return play_time_; }
-    Time GetIdleTime() const {return idle_time_; }
+    std::chrono::milliseconds GetPlayTime() const { return play_time_;}
+    double GetIdleTime() const { return std::chrono::duration<double>(idle_time_).count();}
     bool IsIdle() const { return speed_.vx == 0.0 && speed_.vy == 0.0; }
 
     void SetPosition(Position pos) { pos_ = pos; }
@@ -59,16 +59,16 @@ public:
     void ClearBag() { bag_.clear(); }
     void SetPrevPosition(Position p) { prev_position_ = p; }
     void AddScore(int value) { score_ += value; }
-    void ResetIdleTime() { idle_time_ = Time{0}; }
-    void Tick(Time delta) {
-        play_time_ += delta;
+    void ResetIdleTime() { idle_time_ = std::chrono::milliseconds{0}; }
+    void Tick(std::chrono::milliseconds delta) {
+    play_time_ += delta;
 
-        if (IsIdle()) {
-            idle_time_ += delta;
-        } else {
-            idle_time_ = Time{0};
-        }
+    if (IsIdle()) {
+        idle_time_ += delta;
+    } else {
+        idle_time_ = std::chrono::milliseconds{0};
     }
+}
 
 private:
     PlayerId id_;
@@ -81,8 +81,8 @@ private:
     std::vector<BagItem> bag_;
     int score_ = 0;
     Direction dir_ = Direction::NORTH;
-    Time play_time_{0};
-    Time idle_time_{0};
+    std::chrono::milliseconds play_time_{0};
+    std::chrono::milliseconds idle_time_{0};
 };
 
 class PlayerManager {
