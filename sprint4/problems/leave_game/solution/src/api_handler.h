@@ -254,7 +254,7 @@ public:
                 } else if (move == "") {
                     new_speed = {0, 0};
                 } else {
-                    sendBadRequest(req, send, "Invalid move");
+                    SendBadRequest(req, send, "Invalid move");
                     return;
                 }
 
