@@ -17,7 +17,6 @@ add_library(game_lib STATIC
     src/loot_generator.cpp
     src/logger.cpp
     src/collision_detector.cpp
-    src/db.cpp
 )
 
 target_include_directories(game_lib PUBLIC

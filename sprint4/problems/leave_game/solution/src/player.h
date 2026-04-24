@@ -5,6 +5,7 @@
 #include <vector>
 #include <deque>
 #include "model.h"
+#include <chrono>
 
 namespace model {
 
@@ -30,8 +31,8 @@ using Token = std::string;
 
 class Player {
 public:
-    using Clock = std::chrono::steady_clock;
-
+    using Time = std::chrono::milliseconds;
+    
     Player(PlayerId id, std::string name, Map::Id map_id, Token token)
         : id_(id), name_(std::move(name)), map_id_(map_id), token_(std::move(token)) 
         {prev_position_ = pos_;}
@@ -47,8 +48,9 @@ public:
     Position GetPrevPosition() const { return prev_position_; }
     size_t GetBagSize() const { return bag_.size(); }
     int GetScore() const { return score_; }
-    Clock::time_point GetJoinTime() const { return join_time_; }
-    Clock::time_point GetLastMoveTime() const { return last_move_time_; }
+    Time GetPlayTime() const { return play_time_; }
+    Time GetIdleTime() const {return idle_time_; }
+    bool IsIdle() const { return speed_.vx == 0.0 && speed_.vy == 0.0; }
 
     void SetPosition(Position pos) { pos_ = pos; }
     void SetSpeed(Speed speed) { speed_ = speed; }
@@ -57,9 +59,16 @@ public:
     void ClearBag() { bag_.clear(); }
     void SetPrevPosition(Position p) { prev_position_ = p; }
     void AddScore(int value) { score_ += value; }
-    void SetJoinTime(Clock::time_point t) { join_time_ = t; }
-    void SetLastMoveTime(Clock::time_point t) { last_move_time_ = t; }
+    void ResetIdleTime() { idle_time_ = Time{0}; }
+    void Tick(Time delta) {
+        play_time_ += delta;
 
+        if (IsIdle()) {
+            idle_time_ += delta;
+        } else {
+            idle_time_ = Time{0};
+        }
+    }
 
 private:
     PlayerId id_;
@@ -72,8 +81,8 @@ private:
     std::vector<BagItem> bag_;
     int score_ = 0;
     Direction dir_ = Direction::NORTH;
-    Clock::time_point join_time_ = Clock::now();
-    Clock::time_point last_move_time_ = Clock::now();
+    Time play_time_{0};
+    Time idle_time_{0};
 };
 
 class PlayerManager {
@@ -84,7 +93,7 @@ public:
 
     std::vector<Player*> GetPlayersByMap(const Map::Id& map_id);
     std::vector<Player*> GetAllPlayers();
-    std::vector<Player> RemoveInactive(std::chrono::seconds max_idle);
+    void RemovePlayer(PlayerId id);
 
 private:
     PlayerId next_id_ = 0;

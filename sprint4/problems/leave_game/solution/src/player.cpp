@@ -19,14 +19,11 @@ Player& PlayerManager::AddPlayer(std::string name, const Map::Id& map_id, Positi
     Token token = GenerateToken();
     players_.emplace_back(next_id_++, std::move(name), map_id, token);
     Player& p = players_.back();
-    auto now = Player::Clock::now();
     token_to_player_[p.GetToken()] = &p;
 
     p.SetPosition(start_pos);
     p.SetSpeed({0.0, 0.0});
     p.SetDirection(Direction::NORTH);
-    p.SetJoinTime(now);
-    p.SetLastMoveTime(now);
     return p;
 }
 
@@ -58,37 +55,14 @@ std::vector<Player*> PlayerManager::GetAllPlayers() {
     return result;
 }
 
-std::vector<Player> PlayerManager::RemoveInactive(std::chrono::seconds max_idle) {
-    std::vector<Player> retired;
-
-    auto now = Player::Clock::now();
-
-    for (const auto& p : players_) {
-        auto idle = std::chrono::duration_cast<std::chrono::seconds>(
-            now - p.GetLastMoveTime()
-        );
-
-        if (idle >= max_idle) {
-            retired.push_back(p);
+void PlayerManager::RemovePlayer(PlayerId id) {
+    for (auto it = players_.begin(); it != players_.end(); ++it) {
+        if (it->GetId() == id) {
+            token_to_player_.erase(it->GetToken());
+            players_.erase(it);
+            return;
         }
     }
-
-    for (const auto& p : retired) {
-        token_to_player_.erase(p.GetToken());
-    }
-
-    players_.erase(
-        std::remove_if(players_.begin(), players_.end(),
-            [&](const Player& p) {
-                return std::any_of(retired.begin(), retired.end(),
-                    [&](const Player& rp) {
-                        return rp.GetId() == p.GetId();
-                    });
-            }),
-        players_.end()
-    );
-
-    return retired;
 }
 
 } // namespace model

@@ -5,11 +5,12 @@
 #include "model.h"
 #include "api_handler.h"
 #include "map_extra_data.h"
-#include "db.h"
+#include "records.h"
 
 #include <filesystem>
 #include <string>
 #include <optional>
+#include <sstream>
 
 namespace Endpoints {
 
@@ -35,16 +36,16 @@ public:
                    model::PlayerManager& players,
                    std::filesystem::path static_root,
                    extra_data::Storage& extra_data,
+                   records::Repository& records_repo,
                    bool randomize_spawn,
-                   std::optional<int> tick_period,
-                   Database& db)
+                   std::optional<int> tick_period)
         : game_(game)
         , players_(players)
         , static_root_(std::move(static_root))
         , extra_data_(extra_data)
-        , api_handler_(game_, players_, extra_data_, randomize_spawn)
-        , tick_period_(tick_period)
-        , db_(db) {}
+        , records_repo_(records_repo)
+        , api_handler_(game_, players_, extra_data_, records_repo_, randomize_spawn)
+        , tick_period_(tick_period) {}
 
     template <typename Body, typename Allocator, typename Send>
     void operator()(http::request<Body, http::basic_fields<Allocator>>&& req, Send&& send) {
@@ -58,32 +59,6 @@ public:
 
         if (target == Endpoints::GAME_PLAYERS) {
             api_handler_.HandlePlayers(req, send);
-            return;
-        }
-
-        if (target.starts_with(Endpoints::GAME_RECORDS)) {
-
-            int start = 0;
-            int maxItems = 100;
-
-            if (maxItems > 100) {
-                SendError(send, req, http::status::bad_request);
-                return;
-            }
-
-            auto rows = db_.GetRecords(start, maxItems);
-
-            json::array result;
-
-            for (const auto& row : rows) {
-                result.push_back({
-                    {"name", row["name"].c_str()},
-                    {"score", row["score"].as<int>()},
-                    {"playTime", row["play_time"].as<double>()}
-                });
-            }
-
-            SendJson(send, req, result);
             return;
         }
 
@@ -126,6 +101,16 @@ public:
             }
 
             SendJson(send, req, maps);
+            return;
+        }
+
+        if (target.starts_with(Endpoints::GAME_RECORDS)) {
+            if (req.method() != http::verb::get && req.method() != http::verb::head) {
+                SendError(send, req, http::status::method_not_allowed);
+                return;
+            }
+ 
+            HandleRecords(req, send);
             return;
         }
 
@@ -258,6 +243,59 @@ private:
         send(std::move(res));
     }
 
+    template <typename Send>
+    void HandleRecords(const auto& req, Send&& send) {
+        std::string target = std::string(req.target());
+
+        size_t start = 0;
+        size_t max_items = 100;
+
+        auto pos = target.find('?');
+        if (pos != std::string::npos) {
+            std::string query = target.substr(pos + 1);
+
+            std::stringstream ss(query);
+            std::string part;
+
+            while (std::getline(ss, part, '&')) {
+                auto eq = part.find('=');
+                if (eq == std::string::npos) continue;
+
+                std::string key = part.substr(0, eq);
+                std::string value = part.substr(eq + 1);
+
+                try {
+                    if (key == "start") {
+                        start = std::stoul(value);
+                    } else if (key == "maxItems") {
+                        max_items = std::stoul(value);
+                    }
+                } catch (...) {
+                    SendError(send, req, http::status::bad_request);
+                    return;
+                }
+            }
+        }
+
+        if (max_items > 100) {
+            SendError(send, req, http::status::bad_request);
+            return;
+        }
+
+        auto records = records_repo_.Get(start, max_items);
+
+        json::array result;
+        for (const auto& rec : records) {
+            result.push_back(json::object{
+                {"name", rec.name},
+                {"score", rec.score},
+                {"playTime", rec.play_time}
+            });
+        }
+
+        SendJson(send, req, result);
+    }
+
 private:
     model::Game& game_;
     model::PlayerManager& players_;
@@ -265,7 +303,7 @@ private:
     extra_data::Storage& extra_data_;
     ApiHandler api_handler_;
     std::optional<int> tick_period_;
-    Database& db_;
+    records::Repository& records_repo_;
 };
 
 } // namespace http_handler

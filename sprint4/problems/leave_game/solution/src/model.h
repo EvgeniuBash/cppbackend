@@ -289,11 +289,22 @@ public:
             lost_objects_.emplace(obj.id, obj);
         }
     }
+    
+    void SetDogRetirementTime(double seconds) {
+        dog_retirement_time_ = std::chrono::milliseconds{
+            static_cast<int64_t>(seconds * 1000)
+        };
+    }
+
+    std::chrono::milliseconds GetDogRetirementTime() const {
+        return dog_retirement_time_;
+    }
    
 
 private:
     using MapIdHasher = util::TaggedHasher<Map::Id>;
     using MapIdToIndex = std::unordered_map<Map::Id, size_t, MapIdHasher>;
+    std::chrono::milliseconds dog_retirement_time_{60000};
 
     std::vector<Map> maps_;
     MapIdToIndex map_id_to_index_;

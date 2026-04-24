@@ -15,7 +15,7 @@
 #include "logger.h"
 #include "logging_request_handler.h"
 #include "map_extra_data.h"
-#include "db.h"
+#include "records.h"
 
 namespace net = boost::asio;
 namespace po = boost::program_options;
@@ -83,8 +83,15 @@ struct Args {
     return args;
 }
 
-void TickPlayers(model::PlayerManager& players, std::chrono::milliseconds delta) {
+void TickPlayers(
+    model::Game& game,
+    model::PlayerManager& players,
+    records::Repository& records_repo,
+    std::chrono::milliseconds delta
+) {
     const double dt = delta.count() / 1000.0;
+
+    std::vector<model::PlayerId> to_remove;
 
     for (auto* player : players.GetAllPlayers()) {
         auto pos = player->GetPosition();
@@ -94,21 +101,30 @@ void TickPlayers(model::PlayerManager& players, std::chrono::milliseconds delta)
         pos.y += speed.vy * dt;
 
         player->SetPosition(pos);
-        player->SetLastMoveTime(model::Player::Clock::now());
+        player->Tick(delta);
+
+        if (player->GetIdleTime() >= game.GetDogRetirementTime()) {
+            const double play_time =
+                std::chrono::duration<double>{player->GetPlayTime()}.count();
+
+            records_repo.Save(
+                player->GetName(),
+                player->GetScore(),
+                play_time
+            );
+
+            to_remove.push_back(player->GetId());
+        }
+    }
+
+    for (auto id : to_remove) {
+        players.RemovePlayer(id);
     }
 }
 
 int main(int argc, const char* argv[]) {
     try {
         InitLogging();
-
-        const char* db_url = std::getenv("GAME_DB_URL");
-        if (!db_url) {
-            throw std::runtime_error("GAME_DB_URL not set");
-        }
-
-        Database db(db_url);
-        db.Init();
 
         auto args_opt = ParseCommandLine(argc, argv);
         if (!args_opt) return 0; 
@@ -117,6 +133,7 @@ int main(int argc, const char* argv[]) {
        
         model::Game game = json_loader::LoadGame(args.config_file.string(), extra_storage);
         model::PlayerManager players;
+        records::Repository records_repo{records::GetDbUrlFromEnv()};
 
         net::io_context ioc(1);
 
@@ -125,9 +142,9 @@ int main(int argc, const char* argv[]) {
             players,
             args.www_root,
             extra_storage,
+            records_repo,
             args.randomize_spawn_points,
-            args.tick_period,
-            db
+            args.tick_period
         };
         LoggingRequestHandler logging_handler{handler};
 
@@ -136,21 +153,11 @@ int main(int argc, const char* argv[]) {
 
         if (args.tick_period) {
             auto api_strand = net::make_strand(ioc);
-            const int retirement_time = 60;
             ticker = std::make_shared<Ticker>(
                 api_strand,
                 milliseconds(*args.tick_period),
-                [&players, &db, retirement_time](milliseconds delta) {
-                    TickPlayers(players, delta);
-                    auto retired = players.RemoveInactive(std::chrono::seconds(retirement_time));
-
-                    for (const auto& p : retired) {
-                        double play_time = std::chrono::duration<double>(
-                            model::Player::Clock::now() - p.GetJoinTime()
-                        ).count();
-
-                        db.AddRecord(p.GetName(), p.GetScore(), play_time);
-                    }
+                [&game, &players, &records_repo](milliseconds delta) {
+                    TickPlayers(game, players, records_repo, delta);
                 }
             );
             ticker->Start();

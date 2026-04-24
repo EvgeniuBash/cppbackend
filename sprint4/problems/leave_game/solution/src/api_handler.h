@@ -11,6 +11,7 @@
 #include "player.h"
 #include "map_extra_data.h"
 #include "collision_detector.h"
+#include "records.h"
 
 namespace http_handler {
 
@@ -22,16 +23,18 @@ public:
     ApiHandler(model::Game& game,
                model::PlayerManager& players,
                extra_data::Storage& extra_data,
-               bool randomize_spawn)
+               bool randomize_spawn,
+               records::Repository& records_repo)
         : game_(game)
         , players_(players)
         , extra_data_(extra_data)
-        , randomize_spawn_(randomize_spawn) {}
+        , randomize_spawn_(randomize_spawn)
+        , records_repo_(records_repo) {}
 
     template <typename Send>
     void HandleJoin(const http::request<http::string_body>& req, Send&& send) {
         if (req.method() != http::verb::post) {
-            SendMethodNotAllowed(req, send, "POST");
+            sendMethodNotAllowed(req, send, "POST");
             return;
         }
 
@@ -39,14 +42,14 @@ public:
         try {
             body = json::parse(req.body());
         } catch (...) {
-            SendBadRequest(req, send, "Join game request parse error");
+            sendBadRequest(req, send, "Join game request parse error");
             return;
         }
 
         auto obj = body.as_object();
 
         if (!obj.contains("userName") || !obj.contains("mapId")) {
-            SendBadRequest(req, send, "Missing userName or mapId");
+            sendBadRequest(req, send, "Missing userName or mapId");
             return;
         }
 
@@ -54,18 +57,18 @@ public:
         std::string map_id = obj["mapId"].as_string().c_str();
 
         if (name.empty()) {
-            SendBadRequest(req, send, "Invalid name");
+            sendBadRequest(req, send, "Invalid name");
             return;
         }
 
         const model::Map* map = game_.FindMap(model::Map::Id{map_id});
         if (!map) {
-            SendNotFound(req, send, "mapNotFound", "Map not found");
+            sendNotFound(req, send, "mapNotFound", "Map not found");
             return;
         }
 
         if (map->GetRoads().empty()) {
-            SendBadRequest(req, send, "Map has no roads");
+            sendBadRequest(req, send, "Map has no roads");
             return;
         }
 
@@ -134,7 +137,7 @@ public:
 
         if (req.method() != http::verb::get &&
             req.method() != http::verb::head) {
-            SendMethodNotAllowed(req, send, "GET, HEAD");
+            sendMethodNotAllowed(req, send, "GET, HEAD");
             return;
         }
 
@@ -197,12 +200,12 @@ public:
                       Send&& send) {
 
         if (req.method() != http::verb::post) {
-            SendMethodNotAllowed(req, send, "POST");
+            sendMethodNotAllowed(req, send, "POST");
             return;
         }
 
         if (req[http::field::content_type] != "application/json") {
-            SendBadRequest(req, send, "Invalid content type");
+            sendBadRequest(req, send, "Invalid content type");
             return;
         }
 
@@ -213,12 +216,12 @@ public:
                 try {
                     body = json::parse(req.body());
                 } catch (...) {
-                    SendBadRequest(req, send, "Failed to parse action");
+                    sendBadRequest(req, send, "Failed to parse action");
                     return;
                 }
 
                 if (!body.is_object() || !body.as_object().contains("move")) {
-                    SendBadRequest(req, send, "Failed to parse action");
+                    sendBadRequest(req, send, "Failed to parse action");
                     return;
                 }
 
@@ -226,17 +229,40 @@ public:
 
                 const model::Map* map = game_.FindMap(player->GetMapId());
                 if (!map) {
-                    SendBadRequest(req, send, "Map not found");
+                    sendBadRequest(req, send, "Map not found");
                     return;
                 }
 
                 double s = map->GetDogSpeed();
 
-                if (move == "L") player->SetSpeed({-s, 0});
-                else if (move == "R") player->SetSpeed({s, 0});
-                else if (move == "U") player->SetSpeed({0, -s});
-                else if (move == "D") player->SetSpeed({0, s});
-                else player->SetSpeed({0, 0});
+                bool was_idle = player->IsIdle();
+
+                model::Speed new_speed;
+
+                if (move == "L") {
+                    new_speed = {-s, 0};
+                    player->SetDirection(model::Direction::WEST);
+                } else if (move == "R") {
+                    new_speed = {s, 0};
+                    player->SetDirection(model::Direction::EAST);
+                } else if (move == "U") {
+                    new_speed = {0, -s};
+                    player->SetDirection(model::Direction::NORTH);
+                } else if (move == "D") {
+                    new_speed = {0, s};
+                    player->SetDirection(model::Direction::SOUTH);
+                } else if (move == "") {
+                    new_speed = {0, 0};
+                } else {
+                    sendBadRequest(req, send, "Invalid move");
+                    return;
+                }
+
+                player->SetSpeed(new_speed);
+
+                if (!was_idle && player->IsIdle()) {
+                    player->ResetIdleTime();
+                }
 
                 http::response<http::string_body> res{http::status::ok, req.version()};
                 res.set(http::field::content_type, "application/json");
@@ -253,12 +279,12 @@ public:
                     Send&& send) {
 
         if (req.method() != http::verb::post) {
-            SendMethodNotAllowed(req, send, "POST");
+            sendMethodNotAllowed(req, send, "POST");
             return;
         }
 
         if (req[http::field::content_type] != "application/json") {
-            SendInvalidArgument(req, send, "Invalid content type");
+            sendInvalidArgument(req, send, "Invalid content type");
             return;
         }
 
@@ -266,20 +292,20 @@ public:
         try {
             body = json::parse(req.body());
         } catch (...) {
-            SendInvalidArgument(req, send, "Failed to parse tick request JSON");
+            sendInvalidArgument(req, send, "Failed to parse tick request JSON");
             return;
         }
 
         auto& obj = body.as_object();
 
         if (!obj.contains("timeDelta") || !obj.at("timeDelta").is_int64()) {
-            SendInvalidArgument(req, send, "Invalid timeDelta");
+            sendInvalidArgument(req, send, "Invalid timeDelta");
             return;
         }
 
         int64_t delta_ms = obj.at("timeDelta").as_int64();
         if (delta_ms < 0) {
-            SendInvalidArgument(req, send, "Invalid timeDelta");
+            sendInvalidArgument(req, send, "Invalid timeDelta");
             return;
         }
 
@@ -299,8 +325,6 @@ public:
                     items.push_back(obj);
                 }
             }
-
-            constexpr double PLAYER_RADIUS = 0.3;
 
             class Provider : public collision_detector::ItemGathererProvider {
             public:
@@ -331,6 +355,7 @@ public:
                 }
 
             private:
+                static constexpr double PLAYER_RADIUS = 0.3;
                 const std::vector<model::Player*>& players_;
                 const std::vector<model::LostObject>& items_;
             };
@@ -459,10 +484,6 @@ private:
         bool found = false;
         model::Position best_pos = pos;
         model::Speed best_speed = speed;
- 
-        if (speed.vx != 0 || speed.vy != 0) {
-            player->SetLastMoveTime(model::Player::Clock::now());
-        }
 
         auto is_better = [&](const model::Position& cand) {
             if (!found) {
@@ -549,7 +570,7 @@ private:
         auto it = req.find(http::field::authorization);
 
         if (it == req.end() || it->value().empty()) {
-            SendUnauthorized(req, send, "invalidToken", "Authorization missing");
+            sendUnauthorized(req, send, "invalidToken", "Authorization missing");
             return;
         }
 
@@ -557,7 +578,7 @@ private:
 
         const std::string prefix = "Bearer ";
         if (!auth.starts_with(prefix)) {
-            SendUnauthorized(req, send, "invalidToken", "Bad auth header");
+            sendUnauthorized(req, send, "invalidToken", "Bad auth header");
             return;
         }
 
@@ -572,13 +593,13 @@ private:
         };
 
         if (!isValidToken(token)) {
-            SendUnauthorized(req, send, "invalidToken", "Invalid token");
+            sendUnauthorized(req, send, "invalidToken", "Invalid token");
             return;
         }
 
         auto player = players_.FindByToken(token);
         if (!player) {
-            SendUnauthorized(req, send, "unknownToken", "Not found");
+            sendUnauthorized(req, send, "unknownToken", "Not found");
             return;
         }
 
@@ -589,7 +610,7 @@ private:
     void SendBadRequest(const http::request<http::string_body>& req,
                         Send&& send,
                         const std::string& msg) {
-        SendError(req, send, http::status::bad_request, "invalidArgument", msg);
+        sendError(req, send, http::status::bad_request, "invalidArgument", msg);
     }
 
     template <typename Send>
@@ -597,7 +618,7 @@ private:
                       Send&& send,
                       const std::string& code,
                       const std::string& msg) {
-        SendError(req, send, http::status::not_found, code, msg);
+        sendError(req, send, http::status::not_found, code, msg);
     }
 
     template <typename Send>
@@ -605,7 +626,7 @@ private:
                           Send&& send,
                           const std::string& code,
                           const std::string& msg) {
-        SendError(req, send, http::status::unauthorized, code, msg);
+        sendError(req, send, http::status::unauthorized, code, msg);
     }
 
     template <typename Send>
@@ -679,6 +700,7 @@ private:
     model::PlayerManager& players_;
     extra_data::Storage& extra_data_;
     bool randomize_spawn_;
+    records::Repository& records_repo_;
 };
 
 } // namespace http_handler

@@ -79,6 +79,12 @@ model::Game LoadGame(
         default_capacity = root_obj.at("defaultBagCapacity").as_int64();
     }
 
+    if (root.as_object().contains("dogRetirementTime")) {
+        game.SetDogRetirementTime(
+            root.as_object().at("dogRetirementTime").as_double()
+        );
+    }
+
     json::array maps = root_obj.at("maps").as_array();
 
     for (const auto& map_val : maps) {

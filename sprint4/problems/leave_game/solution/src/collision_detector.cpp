@@ -48,10 +48,10 @@ std::vector<GatheringEvent> FindGatherEvents(const ItemGathererProvider& provide
             }
 
             events.push_back({
-                ii,                 
-                gi,                 
-                result.sq_distance, 
-                result.proj_ratio  
+                ii,                 // item_id
+                gi,                 // gatherer_id
+                result.sq_distance, // sq_distance
+                result.proj_ratio  // time
             });
         }
     }
