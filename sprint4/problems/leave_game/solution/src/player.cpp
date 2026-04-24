@@ -58,7 +58,7 @@ std::vector<Player*> PlayerManager::GetAllPlayers() {
     return result;
 }
 
-std::vector<Player*> PlayerManager::RemoveInactive(std::chrono::seconds max_idle) {
+std::vector<Player*> PlayerManager::RemoveInactive(std::chrono::steady_clock::duration max_idle) {
     std::vector<Player*> retired;
 
     auto now = Player::Clock::now();

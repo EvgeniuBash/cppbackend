@@ -84,7 +84,7 @@ public:
 
     std::vector<Player*> GetPlayersByMap(const Map::Id& map_id);
     std::vector<Player*> GetAllPlayers();
-    std::vector<Player*> RemoveInactive(std::chrono::seconds max_idle);
+    std::vector<Player*> RemoveInactive(std::chrono::steady_clock::duration max_idle);
 
 private:
     PlayerId next_id_ = 0;
