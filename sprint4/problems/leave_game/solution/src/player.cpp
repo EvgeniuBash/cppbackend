@@ -56,10 +56,9 @@ std::vector<Player*> PlayerManager::GetAllPlayers() {
 }
 
 void PlayerManager::RemovePlayer(PlayerId id) {
-    for (auto it = players_.begin(); it != players_.end(); ++it) {
-        if (it->GetId() == id) {
-            token_to_player_.erase(it->GetToken());
-            players_.erase(it);
+    for (auto& player : players_) {
+        if (player.GetId() == id) {
+            token_to_player_.erase(player.GetToken());
             return;
         }
     }
