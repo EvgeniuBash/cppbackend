@@ -79,10 +79,18 @@ model::Game LoadGame(
         default_capacity = root_obj.at("defaultBagCapacity").as_int64();
     }
 
-    if (root.as_object().contains("dogRetirementTime")) {
-        game.SetDogRetirementTime(
-            root.as_object().at("dogRetirementTime").as_double()
-        );
+    if (root_obj.contains("dogRetirementTime")) {
+        const auto& value = root_obj.at("dogRetirementTime");
+
+        double retirement_time = 60.0;
+
+        if (value.is_double()) {
+            retirement_time = value.as_double();
+        } else if (value.is_int64()) {
+            retirement_time = static_cast<double>(value.as_int64());
+        }
+
+        game.SetDogRetirementTime(retirement_time);
     }
 
     json::array maps = root_obj.at("maps").as_array();

@@ -277,6 +277,7 @@ public:
     template <typename Body, typename Allocator, typename Send>
     void HandleTick(http::request<Body, http::basic_fields<Allocator>>& req,
                     Send&& send) {
+        using namespace std::chrono;
 
         if (req.method() != http::verb::post) {
             SendMethodNotAllowed(req, send, "POST");
@@ -296,6 +297,11 @@ public:
             return;
         }
 
+        if (!body.is_object()) {
+            SendInvalidArgument(req, send, "Invalid tick request");
+            return;
+        }
+
         auto& obj = body.as_object();
 
         if (!obj.contains("timeDelta") || !obj.at("timeDelta").is_int64()) {
@@ -309,7 +315,8 @@ public:
             return;
         }
 
-        double dt = delta_ms / 1000.0;
+        const double dt = delta_ms / 1000.0;
+        const milliseconds delta{delta_ms};
 
         for (const auto& map : game_.GetMaps()) {
             auto players = players_.GetPlayersByMap(map.GetId());
@@ -353,7 +360,7 @@ public:
                         {p->GetPrevPosition().x, p->GetPrevPosition().y},
                         {p->GetPosition().x, p->GetPosition().y},
                         PLAYER_RADIUS
-                    };
+                   };
                 }
 
             private:
@@ -364,16 +371,13 @@ public:
             Provider provider(players, items);
             auto events = collision_detector::FindGatherEvents(provider);
 
-            const model::Map* map_ptr = &map;
-
             for (const auto& e : events) {
                 auto* player = players[e.gatherer_id];
                 const auto& item = items[e.item_id];
 
-                size_t capacity = map_ptr->GetBagCapacity();
-
-                if (player->GetBagSize() >= capacity)
+                if (player->GetBagSize() >= map.GetBagCapacity()) {
                     continue;
+                }
 
                 player->AddToBag({item.id, item.type});
                 game_.RemoveLostObject(item.id);
@@ -385,8 +389,7 @@ public:
                 for (const auto& office : map.GetOffices()) {
                     double dx = player->GetPosition().x - office.GetPosition().x;
                     double dy = player->GetPosition().y - office.GetPosition().y;
-
-                    double dist2 = dx*dx + dy*dy;
+                    double dist2 = dx * dx + dy * dy;
 
                     if (dist2 <= BASE_RADIUS * BASE_RADIUS) {
                         auto loot_types = extra_data_.Get(map.GetId());
@@ -394,10 +397,10 @@ public:
                         int total_score = 0;
 
                         for (const auto& item : player->GetBag()) {
-                           total_score += loot_types[item.type]
-                           .as_object()
-                           .at("value")
-                           .as_int64();
+                            total_score += loot_types[item.type]
+                                .as_object()
+                                .at("value")
+                                .as_int64();
                         }
 
                         player->AddScore(total_score);
@@ -407,10 +410,30 @@ public:
             }
 
             game_.GenerateLoot(
-                std::chrono::milliseconds(delta_ms),
+                delta,
                 map,
                 players.size()
             );
+        }
+
+        std::vector<model::PlayerId> retired_players;
+
+        for (auto* player : players_.GetAllPlayers()) {
+            player->Tick(delta);
+
+            if (player->GetIdleTime() >= game_.GetDogRetirementTime()) {
+                records_repo_.Save(
+                    player->GetName(),
+                    player->GetScore(),
+                    duration<double>(player->GetPlayTime()).count()
+                );
+
+                retired_players.push_back(player->GetId());
+            }
+        }
+
+        for (auto id : retired_players) {
+            players_.RemovePlayer(id);
         }
 
         http::response<http::string_body> res{http::status::ok, req.version()};
