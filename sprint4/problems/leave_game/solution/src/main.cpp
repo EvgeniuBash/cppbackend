@@ -94,6 +94,7 @@ void TickPlayers(model::PlayerManager& players, std::chrono::milliseconds delta)
         pos.y += speed.vy * dt;
 
         player->SetPosition(pos);
+        player->SetLastMoveTime(model::Player::Clock::now());
     }
 }
 
@@ -145,10 +146,10 @@ int main(int argc, const char* argv[]) {
 
                     for (auto* p : retired) {
                         double play_time = std::chrono::duration<double>(
-                            model::Player::Clock::now() - p->GetJoinTime()
+                            model::Player::Clock::now() - p.GetJoinTime()
                         ).count();
 
-                        db.AddRecord(p->GetName(), p->GetScore(), play_time);
+                        db.AddRecord(p.GetName(), p.GetScore(), play_time);
                     }
                 }
             );

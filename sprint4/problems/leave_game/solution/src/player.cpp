@@ -58,33 +58,28 @@ std::vector<Player*> PlayerManager::GetAllPlayers() {
     return result;
 }
 
-std::vector<Player*> PlayerManager::RemoveInactive(std::chrono::steady_clock::duration max_idle) {
-    std::vector<Player*> retired;
+std::vector<Player> PlayerManager::RemoveInactive(std::chrono::seconds max_idle) {
+    std::vector<Player> retired;
 
     auto now = Player::Clock::now();
 
-    for (auto& p : players_) {
+    auto it = players_.begin();
+    while (it != players_.end()) {
         auto idle = std::chrono::duration_cast<std::chrono::seconds>(
-            now - p.GetLastMoveTime()
+            now - it->GetLastMoveTime()
         );
 
         if (idle >= max_idle) {
-            retired.push_back(&p);
+            token_to_player_.erase(it->GetToken());
+
+            // КОПИРУЕМ игрока перед удалением
+            retired.push_back(*it);
+
+            it = players_.erase(it);
+        } else {
+            ++it;
         }
     }
-
-    for (auto* p : retired) {
-        token_to_player_.erase(p->GetToken());
-    }
-
-    players_.erase(
-        std::remove_if(players_.begin(), players_.end(),
-            [&](const Player& p) {
-                return std::find_if(retired.begin(), retired.end(),
-                    [&](Player* rp) { return rp->GetId() == p.GetId(); }) != retired.end();
-            }),
-        players_.end()
-    );
 
     return retired;
 }
