@@ -412,35 +412,32 @@ void HandleTick(http::request<Body, http::basic_fields<Allocator>>& req,
         game_.GenerateLoot(delta, map, players.size());
     }
 
-    std::vector<model::PlayerId> retired_players;
+std::vector<model::PlayerId> retired_players;
+std::vector<records::Record> records_to_save;
 
-    for (auto* player : players_.GetAllPlayers()) {
-        player->Tick(delta);
+for (auto* player : players_.GetAllPlayers()) {
+    player->Tick(delta);
 
-        if (player->GetIdleTime() >= game_.GetDogRetirementTime()) {
-            try {
-                records_repo_.Save(
-                    player->GetName(),
-                    player->GetScore(),
-                    duration<double>(player->GetPlayTime()).count()
-                );
+    if (player->GetIdleTime() >= game_.GetDogRetirementTime()) {
+        records_to_save.push_back({
+            player->GetName(),
+            player->GetScore(),
+            duration<double>(player->GetPlayTime()).count()
+        });
 
-                retired_players.push_back(player->GetId());
-
-            } catch (const std::exception& e) {
-                BOOST_LOG_TRIVIAL(error)
-                    << boost::log::add_value(additional_data,
-                        boost::json::object{
-                            {"exception", e.what()}
-                        })
-                    << "failed to save retired player";
-            }
-        }
+        retired_players.push_back(player->GetId());
     }
+}
 
-    for (auto id : retired_players) {
-        players_.RemovePlayer(id);
-    }
+try {
+    records_repo_.SaveMany(records_to_save);
+} catch (...) {
+    return SendInvalidArgument(req, send, "Failed to save records");
+}
+
+for (auto id : retired_players) {
+    players_.RemovePlayer(id);
+}
 
     http::response<http::string_body> res{http::status::ok, req.version()};
     res.set(http::field::content_type, "application/json");

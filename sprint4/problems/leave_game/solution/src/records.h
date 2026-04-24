@@ -59,6 +59,27 @@ public:
         return records;
     }
 
+    void SaveMany(const std::vector<Record>& records) {
+    if (records.empty()) {
+        return;
+    }
+
+    pqxx::connection conn{db_url_};
+    pqxx::work tx{conn};
+
+    for (const auto& r : records) {
+        tx.exec_params(
+            "INSERT INTO retired_players (name, score, play_time) "
+            "VALUES ($1, $2, $3)",
+            r.name,
+            r.score,
+            r.play_time
+        );
+    }
+
+    tx.commit();
+}
+
 private:
     void Init() {
         pqxx::connection conn{db_url_};
