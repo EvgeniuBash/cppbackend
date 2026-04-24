@@ -144,7 +144,7 @@ int main(int argc, const char* argv[]) {
                     TickPlayers(players, delta);
                     auto retired = players.RemoveInactive(std::chrono::seconds(retirement_time));
 
-                    for (auto* p : retired) {
+                    for (const auto& p : retired) {
                         double play_time = std::chrono::duration<double>(
                             model::Player::Clock::now() - p.GetJoinTime()
                         ).count();
