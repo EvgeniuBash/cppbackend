@@ -739,40 +739,45 @@ private:
         player.ClearBag();
     }
 
-    void RetireIdlePlayers(std::chrono::milliseconds delta) {
-        std::vector<model::PlayerId> retired_players;
-        std::vector<records::Record> records_to_save;
+void RetireIdlePlayers(std::chrono::milliseconds delta) {
+    std::vector<model::PlayerId> retired_players;
+    std::vector<records::Record> records_to_save;
 
-        for (auto* player : players_.GetAllPlayers()) {
-            player->Tick(delta);
+    const double retirement_seconds =
+        std::chrono::duration<double>(game_.GetDogRetirementTime()).count();
 
-            if (player->GetIdleTime() >= game_.GetDogRetirementTime()) {
-                records_to_save.push_back({
-                    player->GetName(),
-                    player->GetScore(),
-                    std::chrono::duration<double>(player->GetPlayTime()).count()
-                });
+    for (auto* player : players_.GetAllPlayers()) {
+        player->Tick(delta);
 
-                retired_players.push_back(player->GetId());
-            }
-        }
+        const double idle_seconds = player->GetIdleTime();
 
-        if (!records_to_save.empty()) {
-            try {
-                records_repo_.SaveMany(records_to_save);
-            } catch (const std::exception& e) {
-                std::cerr << "SaveMany failed: " << e.what() << std::endl;
-            }
-        }
+        if (idle_seconds >= retirement_seconds) {
+            records_to_save.push_back({
+                player->GetName(),
+                player->GetScore(),
+                std::chrono::duration<double>(player->GetPlayTime()).count()
+            });
 
-        for (auto id : retired_players) {
-            try {
-                players_.RemovePlayer(id);
-            } catch (const std::exception& e) {
-                std::cerr << "RemovePlayer failed: " << e.what() << std::endl;
-            }
+            retired_players.push_back(player->GetId());
         }
     }
+
+    if (!records_to_save.empty()) {
+        try {
+            records_repo_.SaveMany(records_to_save);
+        } catch (const std::exception& e) {
+            std::cerr << "SaveMany failed: " << e.what() << std::endl;
+        }
+    }
+
+    for (auto id : retired_players) {
+        try {
+            players_.RemovePlayer(id);
+        } catch (const std::exception& e) {
+            std::cerr << "RemovePlayer failed: " << e.what() << std::endl;
+        }
+    }
+}
 
     template <typename Body, typename Fields>
     static bool IsJsonContentType(const http::request<Body, Fields>& req) {
