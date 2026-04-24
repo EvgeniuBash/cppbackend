@@ -63,23 +63,30 @@ std::vector<Player> PlayerManager::RemoveInactive(std::chrono::seconds max_idle)
 
     auto now = Player::Clock::now();
 
-    auto it = players_.begin();
-    while (it != players_.end()) {
+    for (const auto& p : players_) {
         auto idle = std::chrono::duration_cast<std::chrono::seconds>(
-            now - it->GetLastMoveTime()
+            now - p.GetLastMoveTime()
         );
 
         if (idle >= max_idle) {
-            token_to_player_.erase(it->GetToken());
-
-            // КОПИРУЕМ игрока перед удалением
-            retired.push_back(*it);
-
-            it = players_.erase(it);
-        } else {
-            ++it;
+            retired.push_back(p);
         }
     }
+
+    for (const auto& p : retired) {
+        token_to_player_.erase(p.GetToken());
+    }
+
+    players_.erase(
+        std::remove_if(players_.begin(), players_.end(),
+            [&](const Player& p) {
+                return std::any_of(retired.begin(), retired.end(),
+                    [&](const Player& rp) {
+                        return rp.GetId() == p.GetId();
+                    });
+            }),
+        players_.end()
+    );
 
     return retired;
 }
