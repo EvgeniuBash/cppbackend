@@ -301,9 +301,9 @@ private:
     model::PlayerManager& players_;
     std::filesystem::path static_root_;
     extra_data::Storage& extra_data_;
+    records::Repository& records_repo_;
     ApiHandler api_handler_;
     std::optional<int> tick_period_;
-    records::Repository& records_repo_;
 };
 
 } // namespace http_handler

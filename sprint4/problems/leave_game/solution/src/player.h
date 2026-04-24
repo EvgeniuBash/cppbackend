@@ -3,7 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <deque>
+#include <list>
 #include "model.h"
 #include <chrono>
 
@@ -97,7 +97,7 @@ public:
 
 private:
     PlayerId next_id_ = 0;
-    std::deque<Player> players_;
+    std::list<Player> players_;
     std::unordered_map<Token, Player*> token_to_player_;
 };
 
