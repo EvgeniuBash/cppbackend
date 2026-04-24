@@ -431,11 +431,19 @@ for (auto* player : players_.GetAllPlayers()) {
 }
 
 if (!records_to_save.empty()) {
-    records_repo_.SaveMany(records_to_save);
+    try {
+        records_repo_.SaveMany(records_to_save);
+    } catch (const std::exception& e) {
+        std::cerr << "SaveMany failed: " << e.what() << std::endl;
+    }
 }
 
 for (auto id : retired_players) {
-    players_.RemovePlayer(id);
+    try {
+        players_.RemovePlayer(id);
+    } catch (const std::exception& e) {
+        std::cerr << "RemovePlayer failed: " << e.what() << std::endl;
+    }
 }
 
     http::response<http::string_body> res{http::status::ok, req.version()};
