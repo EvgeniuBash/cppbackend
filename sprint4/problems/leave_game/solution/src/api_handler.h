@@ -6,6 +6,7 @@
 #include <string>
 #include <random>
 #include <string_view>
+#include <iostream>
 
 #include "model.h"
 #include "player.h"
@@ -429,10 +430,8 @@ for (auto* player : players_.GetAllPlayers()) {
     }
 }
 
-try {
+if (!records_to_save.empty()) {
     records_repo_.SaveMany(records_to_save);
-} catch (...) {
-    return SendInvalidArgument(req, send, "Failed to save records");
 }
 
 for (auto id : retired_players) {
